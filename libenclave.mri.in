@@ -1,0 +1,5 @@
+OPEN   libenclave.a
+ADDLIB crypto/libcrypto.a
+ADDLIB @BACKEND_LIBRARY@
+SAVE
+END
