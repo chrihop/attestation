@@ -1,8 +1,6 @@
 # build tools
-set(CMAKE_AR gcc-ar)
 set(CMAKE_ASM_COMPILER as)
 set(CMAKE_C_COMPILER gcc)
-set(CMAKE_LINKER gcc-ld)
 set(CMAKE_OBJCOPY objcopy)
 set(CMAKE_RANLIB ranlib)
 set(CMAKE_STRIP strip)

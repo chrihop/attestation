@@ -15,6 +15,7 @@ os_snprintf(char* s, size_t n, const char* format, ...)
     va_start(args, format);
     vsnprintf(s, n, format, args);
     va_end(args);
+    return 0;
 }
 
 int
@@ -24,6 +25,7 @@ os_fprintf(FILE* stream, const char* format, ...)
     va_start(args, format);
     vfprintf(stream, format, args);
     va_end(args);
+    return 0;
 }
 
 int
@@ -33,6 +35,7 @@ os_printf(const char* format, ...)
     va_start(args, format);
     vprintf(format, args);
     va_end(args);
+    return 0;
 }
 
 void

@@ -12,3 +12,7 @@ target_link_libraries(demo_enclave_attestation
     PRIVATE
     enclave
 )
+
+add_dependencies(demo_enclave_attestation
+    enclave-merge
+)

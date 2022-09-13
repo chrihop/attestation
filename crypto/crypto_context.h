@@ -9,7 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define _bss    __attribute__((section(".bss")))
+#ifdef __APPLE__
+#define _bss __attribute__((section("__DATA, .bss")))
+#else
+#define _bss __attribute__((section(".bss")))
+#endif
+
 #define _inline inline __attribute__((always_inline))
 
 typedef unsigned int bool;
