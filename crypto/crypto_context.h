@@ -17,20 +17,17 @@
 
 #define _inline inline __attribute__((always_inline))
 
+#ifndef __cplusplus
 typedef unsigned int bool;
 
 #define FALSE (0)
 #define TRUE  (1)
+#endif
 
 typedef int err_t;
 
 #define ERR_OK           0
 #define ERR_OUT_OF_BOUND 1001
-
-typedef unsigned int bool;
-
-#define FALSE (0)
-#define TRUE  (1)
 
 void panic(const char* s, ...);
 

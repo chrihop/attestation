@@ -17,6 +17,7 @@ add_library(crypto
 target_include_directories(crypto
     PRIVATE
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
     )
 
 target_compile_definitions(crypto

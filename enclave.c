@@ -36,7 +36,7 @@ enclave_key_remote(struct enclave_key_verifier_t* ctx,
     crypto_ds_import_public_key(&ctx->remote_device, remote_device);
 
     /* load session key */
-    bool match;
+    int match;
     crypto_verify(&ctx->remote_device, session_key->key, session_key->len,
         session_signature, &match);
 
@@ -103,7 +103,7 @@ enclave_key_verify_report(struct enclave_key_verifier_t* ctx,
     crypto_assert(ctx->loaded == 1);
 
     /* verify key exchange signature */
-    bool match;
+    int match;
     crypto_hash_init(&ctx->session.sha256_ctx);
     crypto_hash_append(&ctx->session.sha256_ctx, curve->curve, curve->len);
     crypto_hash_append(&ctx->session.sha256_ctx, shared->key, shared->len);
@@ -253,7 +253,7 @@ enclave_loader_report(struct enclave_loader_t* ctx,
     size_t sig_device_auth_b64_len, unsigned char* sig_binary_b64,
     size_t sig_binary_b64_len, struct crypto_ds_signature_t* sig_binary_session)
 {
-    bool match;
+    int match;
     crypto_hash_report(&ctx->sha256_ctx, ctx->sha256_hash);
 
     crypto_assert(ctx->in_use == TRUE);

@@ -1,4 +1,4 @@
 [submodule "backend/mbedtls"]
 	path = backend/mbedtls
 	url = https://github.com/Mbed-TLS/mbedtls.git
-	branch = v2.28.1
+	branch = v3.2.1

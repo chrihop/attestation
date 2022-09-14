@@ -17,8 +17,6 @@ list (APPEND CMAKE_MODULE_PATH
 set (CMAKE_CROSSCOMPILING ON)
 set (CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/config/${CMAKE_SYSTEM_PROCESSOR}.cmake)
 set (ENABLE_TESTING OFF)
-set (ENABLE_PROGRAMS OFF)
-set (UNSAFE_BUILD ON)
 add_subdirectory(mbedtls)
 
 configure_file(
@@ -32,6 +30,7 @@ add_custom_command(
     COMMAND ${CMAKE_PYTHON} scripts/config.py --write include/mbedtls/mbedtls_config.h crypto_baremetal
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_HAVE_ASM
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_MEMORY
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_ALIGN_MULTIPLE 8
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_BUFFER_ALLOC_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_DEBUG
@@ -53,6 +52,7 @@ add_custom_command(
 #    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_TEST_NULL_ENTROPY
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_ECDH_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_ECDSA_C
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_ECDSA_DETERMINISTIC
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_ERROR_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_OID_C

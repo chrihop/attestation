@@ -7,14 +7,32 @@ execute_process(
 
 string(STRIP ${HOST_ARCH} HOST_ARCH)
 
-if (NOT CMAKE_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE  ${CMAKE_SOURCE_DIR}/target-linux-${HOST_ARCH}-gnu.cmake)
-endif()
-
-message("toolchain: " ${CMAKE_TOOLCHAIN_FILE})
+#if (NOT CMAKE_TOOLCHAIN_FILE)
+#    set(CMAKE_TOOLCHAIN_FILE  ${CMAKE_SOURCE_DIR}/target-linux-${HOST_ARCH}-gnu.cmake)
+#endif()
+#
+#message("toolchain: " ${CMAKE_TOOLCHAIN_FILE})
 
 project(attestation)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-fsanitize=address,undefined -fno-sanitize=alignment)
+    add_link_options(-fsanitize=address,undefined -fno-sanitize=alignment)
+endif()
+
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG release-1.12.1
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
 
 if (CMAKE_HOST_SYSTEM_NAME MATCHES Darwin)
     find_program(LIBTOOL libtool
@@ -32,6 +50,7 @@ add_library(enclave
 target_include_directories(enclave
     PRIVATE
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
     )
 
 target_compile_definitions(enclave
@@ -49,6 +68,9 @@ add_dependencies(enclave
 #endif ()
 
 set(BACKEND_LIBRARY ${CMAKE_BINARY_DIR}/backend/mbedtls/library/libmbedcrypto.a)
+
+add_custom_target(backend
+    DEPENDS mbedcrypto)
 
 if (CMAKE_HOST_SYSTEM_NAME MATCHES Linux)
 

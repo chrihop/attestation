@@ -76,10 +76,10 @@ static int pseudo_entropy_source(void * data, unsigned char *output,
     return 0;
 }
 
-
 static struct crypto_rng_context_t crypto_drbg;
 
-_bss static unsigned char crypto_dynamic_memory[CRYPTO_DYNAMIC_MEMORY_SIZE];
+_bss static unsigned char crypto_dynamic_memory[CRYPTO_DYNAMIC_MEMORY_SIZE]
+    __attribute__((aligned(32)));
 
 extern int mbedtls_entropy_add_source( mbedtls_entropy_context *ctx,
                         mbedtls_entropy_f_source_ptr f_source, void *p_source,
@@ -193,7 +193,9 @@ crypto_ds_import_pem_keypair(in unsigned char* pem, in size_t pem_len,
     mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
 
     mbedtls_ecdsa_init(&key_ctx->ecdsa_ctx);
-    memcpy(&key_ctx->ecdsa_ctx, ecp, sizeof(mbedtls_ecp_keypair));
+    crypto_call(mbedtls_ecp_group_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), &ecp->MBEDTLS_PRIVATE(Q));
+    crypto_call(mbedtls_mpi_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(d), &ecp->MBEDTLS_PRIVATE(d));
 
     mbedtls_pk_free(&pk);
 
@@ -212,7 +214,8 @@ crypto_ds_import_pem_public_key(in unsigned char* pem, in size_t pem_len,
 
     mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
     mbedtls_ecdsa_init(&key_ctx->ecdsa_ctx);
-    memcpy(&key_ctx->ecdsa_ctx, ecp, sizeof(mbedtls_ecp_keypair));
+    crypto_call(mbedtls_ecp_group_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), &ecp->MBEDTLS_PRIVATE(Q));
 
     mbedtls_pk_free(&pk);
     return (ERR_OK);
@@ -229,11 +232,8 @@ crypto_ds_export_pem_public_key(in struct crypto_ds_context_t* key_ctx,
         = mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY);
     crypto_call(mbedtls_pk_setup, &pk, pk_info);
     mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
-
-    crypto_call(mbedtls_ecp_export, &key_ctx->ecdsa_ctx,
-        &ecp->MBEDTLS_PRIVATE(grp),
-        &ecp->MBEDTLS_PRIVATE(d),
-        &ecp->MBEDTLS_PRIVATE(Q));
+    crypto_call(mbedtls_ecp_group_copy, &ecp->MBEDTLS_PRIVATE(grp), &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &ecp->MBEDTLS_PRIVATE(Q), &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q));
 
     crypto_call(mbedtls_pk_write_pubkey_pem, &pk, pem, pem_len);
 
@@ -331,7 +331,7 @@ crypto_sign(in struct crypto_ds_context_t* ctx, in message_t msg, in size_t len,
 err_t
 crypto_verify_hashed(in struct crypto_ds_context_t* ctx,
     in unsigned char* sha256, in struct crypto_ds_signature_t* sig,
-    out bool* match)
+    out int* match)
 {
     int rv;
 
@@ -344,7 +344,7 @@ crypto_verify_hashed(in struct crypto_ds_context_t* ctx,
 
 err_t
 crypto_verify(in struct crypto_ds_context_t* ctx, in message_t msg,
-    in size_t len, in struct crypto_ds_signature_t* sig, out bool* match)
+    in size_t len, in struct crypto_ds_signature_t* sig, out int* match)
 {
     int rv;
 
@@ -375,13 +375,13 @@ crypto_pki_new(in struct crypto_pki_context_t* ctx,
     return (ERR_OK);
 }
 
-bool
+int
 crypto_pki_verify(in struct crypto_pki_context_t* ctx)
 {
     crypto_assert(ctx->authority != NULL);
     crypto_ds_export_public_key(&ctx->client, &ctx->cert.pk);
 
-    bool succ;
+    int succ;
     crypto_verify(ctx->authority, ctx->cert.pk.key, ctx->cert.pk.len,
         &ctx->cert.sig, &succ);
 
@@ -516,7 +516,7 @@ _bss static unsigned char crypto_sc_mac_starter[32];
 
 err_t
 crypto_sc_mac_init(in struct crypto_sc_mac_context_t* ctx, in sk_t sk,
-    in size_t sk_len, in bool to_encrypt)
+    in size_t sk_len, in int to_encrypt)
 {
     mbedtls_chachapoly_init(&ctx->chachapoly);
     memset(crypto_sc_mac_starter, 0, sizeof(crypto_sc_mac_starter));
@@ -565,7 +565,7 @@ crypto_sc_mac_encrypt(in struct crypto_sc_mac_context_t* ctx, in message_t msg,
     return (ERR_OK);
 }
 
-bool
+int
 crypto_sc_mac_decrypt(in struct crypto_sc_mac_context_t* ctx,
     in cyphertext_t cipher_tag, in size_t cipher_tag_len, out message_t msg,
     out size_t* msg_len)

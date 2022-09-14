@@ -1,7 +1,7 @@
 #include "crypto_context.h"
 
 #ifdef _STD_LIBC_
-
+#include <execinfo.h>
 void
 os_exit(int status)
 {
@@ -77,6 +77,28 @@ memdump(const void* s, unsigned int n)
     os_printf("\n------\n");
 }
 
+void print_backtrace(void)
+{
+#ifdef _STD_LIBC_
+    void* callstack[32];
+    int i, frames = backtrace(callstack, 32);
+    char** strs = backtrace_symbols(callstack, frames);
+    for (i = 0; i < frames; ++i)
+    {
+        if (i == 3)
+        {
+            printf(" ===> ");
+        }
+        else
+        {
+            printf("      ");
+        }
+        printf("%s\n", strs[i]);
+    }
+    free(strs);
+#endif
+}
+
 void
 panic(const char* s, ...)
 {
@@ -84,6 +106,7 @@ panic(const char* s, ...)
     va_start(args, s);
     vprintf(s, args);
     va_end(args);
+    print_backtrace();
     exit(0);
 }
 
