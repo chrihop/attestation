@@ -78,7 +78,7 @@ void client_handshake(void)
     enclave_ra_challenge(&challenge);
     memcpy(&ch.curve, &challenge.curve, sizeof(struct crypto_dh_curve_t));
     printf("challenge token: ");
-    for (int i = 0; i < sizeof(struct crypto_dh_curve_t); i++) {
+    for (int i = 0; i < ch.curve.len; i++) {
         printf("%02x ", ch.curve.curve[i]);
     }
     printf("\n");

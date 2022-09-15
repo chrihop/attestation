@@ -17,6 +17,17 @@ add_dependencies(demo_enclave_attestation
     enclave-merge
 )
 
+include_directories(
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+)
+
+link_libraries(
+    enclave
+    GTest::gtest_main
+    GTest::gmock
+)
+
 add_executable(test_crypto_ecc_ecdh
   test_crypto_ecc_ecdh.cc
 )
@@ -114,6 +125,18 @@ target_link_libraries(test_crypto_md_sha256
 )
 
 add_dependencies(test_crypto_md_sha256
+    enclave-merge
+)
+
+add_executable(test_crypto_rot
+  test_crypto_rot.cc
+)
+
+target_compile_definitions(test_crypto_rot
+    PRIVATE
+    _STD_LIBC_)
+
+add_dependencies(test_crypto_rot
     enclave-merge
 )
 

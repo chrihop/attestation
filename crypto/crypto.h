@@ -283,7 +283,7 @@ extern "C"
          out size_t* msg_len);
 
 #ifdef __cplusplus
-}
+};
 #endif
 
 

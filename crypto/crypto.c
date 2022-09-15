@@ -368,6 +368,7 @@ crypto_pki_new(in struct crypto_pki_context_t* ctx,
     in struct crypto_ds_context_t*             authority)
 {
     ctx->authority = authority;
+    crypto_ds_init(&ctx->client);
     crypto_ds_gen_keypair(&ctx->client);
     crypto_ds_export_public_key(&ctx->client, &ctx->cert.pk);
 

@@ -99,3 +99,60 @@ TEST_F(CryptoECDSA_Test, digitalSignNondeterministicSign)
     EXPECT_EQ(crypto_verify(&clt, (message_t) msg, strlen(msg), &sig2, &match), ERR_OK);
     EXPECT_EQ(match, true);
 }
+
+TEST_F(CryptoECDSA_Test, digitalSignHashed)
+{
+    EXPECT_EQ(crypto_ds_init(&ctx), ERR_OK);
+    EXPECT_EQ(crypto_ds_gen_keypair(&ctx), ERR_OK);
+    const char * msg1 = "plain text to sign. a";
+    const char * msg2 = "plain text to sign. b";
+    const char * msg3 = "plain text to sign. c";
+    crypto_hash_context_t hash;
+    uint8_t sha[32];
+    EXPECT_EQ(crypto_hash_init(&hash), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg1, strlen(msg1)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg2, strlen(msg2)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg3, strlen(msg3)), ERR_OK);
+    EXPECT_EQ(crypto_hash_report(&hash, sha), ERR_OK);
+    crypto_ds_signature_t sig;
+    EXPECT_EQ(crypto_sign_hashed(&ctx, sha, &sig), ERR_OK);
+    key_print("signature", sig.signature, sig.len);
+    int match;
+    EXPECT_EQ(crypto_verify_hashed(&ctx, sha, &sig, &match), ERR_OK);
+    EXPECT_EQ(match, true);
+}
+
+TEST_F(CryptoECDSA_Test, digitalSignHashedPubkey)
+{
+    EXPECT_EQ(crypto_ds_init(&srv), ERR_OK);
+    EXPECT_EQ(crypto_ds_gen_keypair(&srv), ERR_OK);
+    const char * msg1 = "plain text to sign. a";
+    const char * msg2 = "plain text to sign. b";
+    const char * msg3 = "plain text to sign. c";
+    crypto_hash_context_t hash;
+    uint8_t sha[32];
+    EXPECT_EQ(crypto_hash_init(&hash), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg1, strlen(msg1)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg2, strlen(msg2)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg3, strlen(msg3)), ERR_OK);
+    EXPECT_EQ(crypto_hash_report(&hash, sha), ERR_OK);
+    crypto_ds_signature_t sig;
+    EXPECT_EQ(crypto_sign_hashed(&srv, sha, &sig), ERR_OK);
+    key_print("signature", sig.signature, sig.len);
+
+    crypto_ds_public_key_t pubkey;
+    EXPECT_EQ(crypto_ds_export_public_key(&srv, &pubkey), ERR_OK);
+
+    EXPECT_EQ(crypto_ds_init(&clt), ERR_OK);
+    EXPECT_EQ(crypto_ds_import_public_key(&clt, &pubkey), ERR_OK);
+    EXPECT_EQ(crypto_hash_init(&hash), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg1, strlen(msg1)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg2, strlen(msg2)), ERR_OK);
+    EXPECT_EQ(crypto_hash_append(&hash, (message_t) msg3, strlen(msg3)), ERR_OK);
+    EXPECT_EQ(crypto_hash_report(&hash, sha), ERR_OK);
+
+    int match;
+    EXPECT_EQ(crypto_verify_hashed(&clt, sha, &sig, &match), ERR_OK);
+    EXPECT_EQ(match, true);
+}
+
