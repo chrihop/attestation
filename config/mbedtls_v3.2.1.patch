@@ -1,0 +1,78 @@
+diff --git a/library/bignum.c b/library/bignum.c
+index 8717c8abc..a52bf7227 100644
+--- a/library/bignum.c
++++ b/library/bignum.c
+@@ -1435,7 +1435,8 @@ int mbedtls_mpi_mul_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
+     MBEDTLS_MPI_CHK( mbedtls_mpi_grow( X, i + j ) );
+     MBEDTLS_MPI_CHK( mbedtls_mpi_lset( X, 0 ) );
+ 
+-    for( size_t k = 0; k < j; k++ )
++    size_t k;
++    for( k = 0; k < j; k++ )
+     {
+         /* We know that there cannot be any carry-out since we're
+          * iterating from bottom to top. */
+@@ -1876,7 +1877,8 @@ static void mpi_montmul( mbedtls_mpi *A, const mbedtls_mpi *B, const mbedtls_mpi
+     n = N->n;
+     m = ( B->n < n ) ? B->n : n;
+ 
+-    for( size_t i = 0; i < n; i++ )
++    size_t i;
++    for( i = 0; i < n; i++ )
+     {
+         mbedtls_mpi_uint u0, u1;
+ 
+@@ -1952,7 +1954,8 @@ static int mpi_select( mbedtls_mpi *R, const mbedtls_mpi *T, size_t T_size, size
+ {
+     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+ 
+-    for( size_t i = 0; i < T_size; i++ )
++    size_t i;
++    for( i = 0; i < T_size; i++ )
+     {
+         MBEDTLS_MPI_CHK( mbedtls_mpi_safe_cond_assign( R, &T[i],
+                         (unsigned char) mbedtls_ct_size_bool_eq( i, idx ) ) );
+diff --git a/library/ctr_drbg.c b/library/ctr_drbg.c
+index 43f490e83..d03be5284 100644
+--- a/library/ctr_drbg.c
++++ b/library/ctr_drbg.c
+@@ -45,6 +45,11 @@
+ #endif /* MBEDTLS_PLATFORM_C */
+ #endif /* MBEDTLS_SELF_TEST */
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#define INT_MAX		(2147483647)
++#endif
++
+ /*
+  * CTR_DRBG context initialization
+  */
+diff --git a/library/ecjpake.c b/library/ecjpake.c
+index d467a6540..d17544200 100644
+--- a/library/ecjpake.c
++++ b/library/ecjpake.c
+@@ -970,7 +970,8 @@ static int self_test_rng( void *ctx, unsigned char *out, size_t len )
+ 
+     (void) ctx;
+ 
+-    for( size_t i = 0; i < len; i++ )
++    size_t i;
++    for( i = 0; i < len; i++ )
+     {
+         state = state * 1664525u + 1013904223u;
+         out[i] = (unsigned char) state;
+diff --git a/library/ecp.c b/library/ecp.c
+index 67c46f2c3..4a560a199 100644
+--- a/library/ecp.c
++++ b/library/ecp.c
+@@ -3391,7 +3391,8 @@ static int self_test_rng( void *ctx, unsigned char *out, size_t len )
+ 
+     (void) ctx;
+ 
+-    for( size_t i = 0; i < len; i++ )
++    size_t i;
++    for( i = 0; i < len; i++ )
+     {
+         state = state * 1664525u + 1013904223u;
+         out[i] = (unsigned char) state;
