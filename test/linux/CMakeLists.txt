@@ -5,7 +5,7 @@ set(LINUX_ARCH "x86")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
 find_package(KernelHeaders REQUIRED)
 
-set(DRIVER "demo_enclave_linux_driver.ko")
+set(DRIVER "attestation.ko")
 set(DRIVER_SRC
     demo_enclave_linux_driver.c)
 
@@ -115,15 +115,12 @@ string(REPLACE ";" " " MBEDCRYPTO_OBJ "${MBEDCRYPTO_OBJ}")
 
 file(
     WRITE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Makefile
+    ${CMAKE_CURRENT_SOURCE_DIR}/Kbuild
+    "obj-m += attestation.o \n"
+    "attestation-y += demo_enclave_linux_driver.o crypto_context_linux_kernel.o enclave.o crypto/crypto.o crypto/root_key.o\n"
+    "attestation-y += ${MBEDCRYPTO_OBJ}\n"
     "ccflags-y += -D_LINUX_KERNEL_ -DSIZE_MAX=18446744073709551615UL -include ${CMAKE_SOURCE_DIR}/crypto/crypto_context_linux.h -include ${CMAKE_SOURCE_DIR}/backend/mbedtls/include/mbedtls/mbedtls_config.h -I${CMAKE_SOURCE_DIR} -I${CMAKE_SOURCE_DIR}/backend/mbedtls/include -I${CMAKE_SOURCE_DIR}/backend/mbedtls/library -I${CMAKE_CURRENT_BINARY_DIR}/linux\n"
     "ldflags-y += \n"
-#    "mbedtls-src = $(wildcard mbedtls/library/*.c)"
-#    "mbedtls-obj = $(patsubst %.c, %.o, $(mbedtls-src))"
-#    "obj-m += demo_enclave_linux_driver.o\n"
-    "obj-m += demo_enclave_linux_driver.o \n"
-    "demo_enclave_linux_driver-y += demo_enclave_linux_driver.o crypto_context_linux_kernel.o enclave.o crypto/crypto.o crypto/root_key.o\n"
-    "demo_enclave_linux_driver-y += ${MBEDCRYPTO_OBJ}\n"
 )
 
 add_custom_command(
@@ -136,15 +133,13 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/linux/stdlib.h
     COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/linux/string.h
     COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/linux/time.h
+    COMMAND ${CMAKE_COMMAND} -E touch mbedtls_fake_headers.tstamp
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "creating fake headers ..."
     VERBATIM
 )
 
 add_custom_command(OUTPUT ${DRIVER}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/libenclave_linux.a ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/crypto/libcrypto_linux.a ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/backend/mbedtls/library/libmbedcrypto.a ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${KBUILD_CMD}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${DRIVER_SRC} demo_enclave_linux_driver.context.tstamp
@@ -181,7 +176,7 @@ add_custom_command(OUTPUT "demo_enclave_linux_driver.install.tstamp"
 add_custom_target(install_driver DEPENDS "demo_enclave_linux_driver.install.tstamp")
 
 add_custom_command(OUTPUT "demo_enclave_linux_driver.uninstall.tstamp"
-    COMMAND sudo modprobe -r demo_enclave_linux_driver
+    COMMAND sudo rmmod attestation
     )
 
 add_custom_target(uninstall_driver DEPENDS "demo_enclave_linux_driver.uninstall.tstamp")

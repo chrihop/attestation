@@ -15,4 +15,12 @@ extern int * stderr;
 
 extern int rand(void);
 
+static const char
+__UNIQUE_ID(license)[] __attribute__((__used__))
+__attribute__((__section__(".modinfo"))) __attribute__((__aligned__(1)))
+= KBUILD_MODNAME "."
+                 "license"
+                 "="
+                 "Dual BSD/GPL";
+
 #endif /* !_CRYPTO_CONTEXT_LINUX_H_ */

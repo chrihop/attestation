@@ -13,6 +13,7 @@
 #include <linux/printk.h>
 #include <linux/kernel.h>
 #include <linux/random.h>
+#include <linux/module.h>
 
 int * stderr = NULL;
 
@@ -72,3 +73,4 @@ int rand(void)
 {
     return get_random_int();
 }
+

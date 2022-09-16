@@ -5,13 +5,6 @@
 #define DRIVER_AUTHOR	"Hao Chen <hao.chen@yale.edu>"
 #define DRIVER_DESC		"Attestation driver for Linux"
 
-MODULE_LICENSE("GPL");
-
-//MODULE_LICENSE("Dual BSD/GPL");
-//MODULE_AUTHOR(DRIVER_AUTHOR);
-//MODULE_DESCRIPTION(DRIVER_DESC);
-
-
 #include <enclave.h>
 
 struct enclave_key_store_t root_key;
@@ -22,18 +15,18 @@ char buffer[1024];
 void print_key(char * name, void * key, size_t sz)
 {
     int i;
-    sprintf(buffer, "%s: ", name);
+    printk(KERN_INFO "%s (size %lu): ", name, sz);
     for (i = 0; i < sz; i++)
     {
-        sprintf(&buffer[strlen(name)], "%02x", ((unsigned char *)key)[i]);
+        sprintf(&buffer[i * 2], "%02x", ((unsigned char *)key)[i]);
     }
-    printk(KERN_NOTICE "%s", buffer);
+    buffer[i * 2] = '\0';
+    printk(KERN_INFO "%s\n", buffer);
 }
 
 static int attestation_dev_init(void)
 {
     printk(KERN_INFO "attestation device init\n");
-    printk(KERN_INFO "enclave key store size: %d\n", SIZE_MAX);
     crypto_init();
     enclave_key_native(&root_key);
     crypto_ds_export_public_key(&root_key.device_key, &pubkey);
@@ -51,3 +44,6 @@ static void attestation_dev_exit(void)
 module_init(attestation_dev_init);
 module_exit(attestation_dev_exit);
 
+MODULE_LICENSE("Dual BSD/GPL");
+MODULE_AUTHOR(DRIVER_AUTHOR);
+MODULE_DESCRIPTION(DRIVER_DESC);
