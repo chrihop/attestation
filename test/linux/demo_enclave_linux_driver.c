@@ -5,9 +5,11 @@
 #define DRIVER_AUTHOR	"Hao Chen <hao.chen@yale.edu>"
 #define DRIVER_DESC		"Attestation driver for Linux"
 
-MODULE_LICENSE("Dual BSD/GPL");
-MODULE_AUTHOR(DRIVER_AUTHOR);
-MODULE_DESCRIPTION(DRIVER_DESC);
+MODULE_LICENSE("GPL");
+
+//MODULE_LICENSE("Dual BSD/GPL");
+//MODULE_AUTHOR(DRIVER_AUTHOR);
+//MODULE_DESCRIPTION(DRIVER_DESC);
 
 
 #include <enclave.h>

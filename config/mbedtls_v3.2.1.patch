@@ -1,3 +1,18 @@
+diff --git a/library/asn1write.c b/library/asn1write.c
+index 053dbb669..dd050e4b8 100644
+--- a/library/asn1write.c
++++ b/library/asn1write.c
+@@ -34,6 +34,10 @@
+ #define mbedtls_free       free
+ #endif
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ int mbedtls_asn1_write_len( unsigned char **p, const unsigned char *start, size_t len )
+ {
+     if( len < 0x80 )
 diff --git a/library/bignum.c b/library/bignum.c
 index 8717c8abc..a52bf7227 100644
 --- a/library/bignum.c
@@ -76,3 +91,78 @@ index 67c46f2c3..4a560a199 100644
      {
          state = state * 1664525u + 1013904223u;
          out[i] = (unsigned char) state;
+diff --git a/library/nist_kw.c b/library/nist_kw.c
+index 1aea0b634..7a93b6717 100644
+--- a/library/nist_kw.c
++++ b/library/nist_kw.c
+@@ -48,6 +48,10 @@
+ #endif /* MBEDTLS_PLATFORM_C */
+ #endif /* MBEDTLS_SELF_TEST && MBEDTLS_AES_C */
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ #if !defined(MBEDTLS_NIST_KW_ALT)
+ 
+ #define KW_SEMIBLOCK_LENGTH    8
+diff --git a/library/pk.c b/library/pk.c
+index 1eab65a27..29425c8b7 100644
+--- a/library/pk.c
++++ b/library/pk.c
+@@ -50,6 +50,10 @@
+ #define PK_VALIDATE( cond )        \
+     MBEDTLS_INTERNAL_VALIDATE( cond )
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ /*
+  * Initialise a mbedtls_pk_context
+  */
+diff --git a/library/pk_wrap.c b/library/pk_wrap.c
+index e234a8de3..afb06c771 100644
+--- a/library/pk_wrap.c
++++ b/library/pk_wrap.c
+@@ -19,6 +19,10 @@
+ 
+ #include "common.h"
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ #if defined(MBEDTLS_PK_C)
+ #include "pk_wrap.h"
+ #include "mbedtls/error.h"
+diff --git a/library/psa_crypto.c b/library/psa_crypto.c
+index b0116ddfb..729614d13 100644
+--- a/library/psa_crypto.c
++++ b/library/psa_crypto.c
+@@ -20,6 +20,10 @@
+ 
+ #include "common.h"
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ #if defined(MBEDTLS_PSA_CRYPTO_C)
+ 
+ #if defined(MBEDTLS_PSA_CRYPTO_CONFIG)
+diff --git a/library/psa_crypto_rsa.c b/library/psa_crypto_rsa.c
+index 68f4bf16d..4610ba7c1 100644
+--- a/library/psa_crypto_rsa.c
++++ b/library/psa_crypto_rsa.c
+@@ -20,6 +20,10 @@
+ 
+ #include "common.h"
+ 
++#ifdef _LINUX_KERNEL_
++#define SIZE_MAX	(18446744073709551615UL)
++#endif
++
+ #if defined(MBEDTLS_PSA_CRYPTO_C)
+ 
+ #include <psa/crypto.h>
