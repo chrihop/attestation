@@ -33,6 +33,27 @@ void panic(const char* s, ...);
 
 void memdump(const void* s, unsigned int n);
 
+#elif defined(_LINUX_KERNEL_)
+
+#define _bss __attribute__((section(".bss")))
+#define _inline inline __attribute__((always_inline))
+
+#define FALSE (0)
+#define TRUE  (1)
+
+typedef int err_t;
+
+#define ERR_OK           0
+#define ERR_OUT_OF_BOUND 1001
+
+void panic(const char* s, ...);
+
+void * memcpy(void *,const void *, unsigned long);
+
+void * memset(void *,int, unsigned long);
+
+int memcmp(const void *,const void *, unsigned long);
+
 #else /* _STD_LIBC_ */
 /* link with certikos kernel */
 #include <lib/common.h>

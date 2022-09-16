@@ -29,6 +29,7 @@ add_custom_command(
     COMMAND ${GIT_EXECUTABLE} checkout -- include/mbedtls/mbedtls_config.h
     COMMAND ${CMAKE_PYTHON} scripts/config.py --write include/mbedtls/mbedtls_config.h crypto_baremetal
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_HAVE_ASM
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_NO_UDBL_DIVISION
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_MEMORY
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_ALIGN_MULTIPLE 8
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
@@ -43,6 +44,7 @@ add_custom_command(
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_NIST_OPTIM
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_VERSION_FEATURES
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_AES_C
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_AESNI_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_CHACHA20_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_CIPHER_C
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_CTR_DRBG_C
@@ -84,7 +86,6 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E echo "#include \"os.h\"" > include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E cat include/mbedtls/mbedtls_config.h >> include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E rename include/mbedtls/mbedtls_config_os.h include/mbedtls/mbedtls_config.h
-    BYPRODUCTS mbedtls/include/mbedtls/mbedtls_config.h
     WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
     COMMENT "configure mbedtls ..."
     VERBATIM
@@ -94,69 +95,3 @@ add_custom_command(
 add_custom_target(mbedtls-config
     DEPENDS mbedtls_config.tstamp)
 
-include (ExternalProject)
-
-ExternalProject_Add(
-    mbedcrypto-repo
-    EXCLUDE_FROM_ALL true
-    GIT_REPOSITORY "https://github.com/Mbed-TLS/mbedtls.git"
-    GIT_TAG "v3.2.1"
-    GIT_SUBMODULES_RECURSE true
-    GIT_PROGRESS true
-    CONFIGURE_COMMAND
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --write <SOURCE_DIR>/include/mbedtls/mbedtls_config.h crypto_baremetal
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_HAVE_ASM
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_MEMORY
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_BUFFER_ALLOC_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_MEMORY_DEBUG
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_CIPHER_MODE_CBC
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_CIPHER_PADDING_PKCS7
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_DP_SECP192R1_ENABLED
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_DP_SECP256R1_ENABLED
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_DP_CURVE25519_ENABLED
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_NIST_OPTIM
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_VERSION_FEATURES
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_AES_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_CHACHA20_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_CIPHER_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_CTR_DRBG_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ENTROPY_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_NO_PLATFORM_ENTROPY
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECDH_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECDSA_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ECP_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ERROR_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_OID_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_MD_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_SHA256_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_SHA512_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ASN1_PARSE_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_ASN1_WRITE_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_BASE64_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_BIGNUM_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PEM_WRITE_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PK_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PK_PARSE_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PK_WRITE_C
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_EXIT_MACRO     os_exit
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_FPRINTF_MACRO  os_fprintf
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_PRINTF_MACRO   os_printf
-        COMMAND ${CMAKE_PYTHON} <SOURCE_DIR>/scripts/config.py --file <SOURCE_DIR>/include/mbedtls/mbedtls_config.h set MBEDTLS_PLATFORM_SNPRINTF_MACRO os_snprintf
-        COMMAND ${CMAKE_COMMAND} <SOURCE_DIR>
-                                 -DCMAKE_CROSSCOMPILING=y
-                                 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/config/${CMAKE_SYSTEM_PROCESSOR}.cmake
-                                 -DENABLE_TESTING=OFF
-                                 -DENABLE_PROGRAMS=OFF
-                                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                                 -DUNSAFE_BUILD=ON
-    BUILD_COMMAND
-        echo build
-    INSTALL_COMMAND
-        echo install
-    USES_TERMINAL_CONFIGURE true
-    USES_TERMINAL_BUILD true
-    USES_TERMINAL_INSTALL true
-)

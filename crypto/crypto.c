@@ -1,8 +1,49 @@
 #ifdef _STD_LIBC_
 #include <crypto/crypto.h>
+#elif defined(_LINUX_KERNEL_)
+#include <crypto/crypto.h>
 #else
 #include <lib/crypto/crypto.h>
 #endif
+
+void
+memdump(const void* s, unsigned int n)
+{
+    uint8_t v;
+    size_t  i, j;
+
+    os_printf("-- %lu B --\n", n);
+    os_printf("%08x: ", ((uintptr_t)s));
+    for (i = 0; i < n; i++)
+    {
+        v = *(((uint8_t*)s) + i);
+        os_printf("%02x", v);
+
+        if ((i + 1) % 16 == 0 && i != 0)
+        {
+            os_printf(" | ");
+            for (j = i - 15; j < i; j++)
+            {
+                v = *(((uint8_t*)s) + j);
+                os_printf("%c", 0x20 <= v && v <= 0x7e ? v : '.');
+            }
+            os_printf(" |\n%08x: ", ((uintptr_t)s) + i + 1);
+        }
+        else if ((i + 1) % 8 == 0 && i != 0)
+        {
+            os_printf("    ");
+        }
+        else if ((i + 1) % 4 == 0 && i != 0)
+        {
+            os_printf("  ");
+        }
+        else
+        {
+            os_printf(" ");
+        }
+    }
+    os_printf("\n------\n");
+}
 
 /**
  * Crypto - mbedtls adaption interface
@@ -586,8 +627,8 @@ crypto_sc_mac_decrypt(in struct crypto_sc_mac_context_t* ctx,
     crypto_call(mbedtls_chachapoly_starts, &ctx->chachapoly, ctx->sha256_hash,
         MBEDTLS_CHACHAPOLY_DECRYPT);
 
-    int diff
-        = memcmp(&cipher_tag[cipher_tag_len - 16u], ctx->poly1305_tag, 16u);
+    int diff = memcmp(&cipher_tag[cipher_tag_len - 16u], ctx->poly1305_tag, 16lu);
     *msg_len = cipher_tag_len - 16u;
     return (diff ? FALSE : TRUE);
 }
+

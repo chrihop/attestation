@@ -19,10 +19,17 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=../target-linux-<arch>-<abi>.cmake
 And then use:
 
 ```shell
+make mbedtls-config
+make mbedcrypto
+```
+
+to build the backend library. Then use:
+
+```shell
 make enclave
 ```
 
-to build the library.
+to build the enclave library.
 
 ## Test
 

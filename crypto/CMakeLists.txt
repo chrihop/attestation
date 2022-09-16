@@ -23,3 +23,27 @@ target_include_directories(crypto
 target_compile_definitions(crypto
     PRIVATE
     _STD_LIBC_)
+
+# enclave library is linked with linux kernel modules
+
+add_library(crypto_linux
+    STATIC
+    crypto.c
+    root_key.c
+    )
+
+target_compile_options(crypto_linux
+    PRIVATE
+    -nostdlib
+)
+
+target_include_directories(crypto_linux
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_compile_definitions(crypto_linux
+    PRIVATE
+    _LINUX_KERNEL_
+    )

@@ -1,9 +1,8 @@
 #ifndef _KERN_ENCLAVE_H_
 #define _KERN_ENCLAVE_H_
 
-#ifdef _STD_LIBC_
+#if defined(_STD_LIBC_) || defined(_LINUX_KERNEL_)
 #include <crypto/crypto.h>
-#include <stddef.h>
 #else
 #include <lib/crypto/crypto.h>
 #endif
@@ -13,14 +12,14 @@
  */
 struct enclave_key_store_t
 {
-    bool                        has_root;
+    int                        has_root;
     struct crypto_ds_context_t  device_key;
     struct crypto_pki_context_t session;
 };
 
 struct enclave_key_verifier_t
 {
-    bool                          loaded;
+    int                          loaded;
     struct crypto_ds_public_key_t session_pubkey;
     struct crypto_ds_context_t    session;
     struct crypto_ds_context_t    remote_device;
@@ -43,7 +42,7 @@ struct enclave_session_mgmt_t
     size_t                        n_sessions;
 };
 
-#if __cplusplus
+#ifdef __cplusplus
 extern "C"
 {
 #endif
@@ -51,7 +50,7 @@ extern "C"
     err_t  enclave_key_native(struct enclave_key_store_t* ctx);
 
     /* verify endorsement certificate from another device */
-    bool   enclave_key_remote(struct enclave_key_verifier_t* ctx,
+    int   enclave_key_remote(struct enclave_key_verifier_t* ctx,
           struct crypto_ds_public_key_t*                     remote_device,
           struct crypto_ds_public_key_t*                     session_key,
           struct crypto_ds_signature_t*                      session_signature);
@@ -63,7 +62,7 @@ extern "C"
          struct crypto_ds_signature_t* sig_binary,
          struct enclave_key_report_t*  report);
 
-    bool   enclave_key_verify_report(struct enclave_key_verifier_t* ctx,
+    int   enclave_key_verify_report(struct enclave_key_verifier_t* ctx,
           struct crypto_dh_curve_t* curve, struct crypto_dh_key_t* shared,
           struct crypto_ds_signature_t* sig_dh,
           struct crypto_ds_signature_t* sig_binary,
@@ -84,7 +83,7 @@ extern "C"
     void   enclave_session_mgmt_free(
           struct enclave_session_mgmt_t* mgmt, size_t session_idx);
 
-#if __cplusplus
+#ifdef __cplusplus
 };
 #endif
 
@@ -94,7 +93,7 @@ extern "C"
  */
 struct enclave_loader_t
 {
-    bool                          in_use;
+    int                          in_use;
     crypto_hash_context_t         sha256_ctx;
     unsigned char                 sha256_hash[32];
     struct crypto_ds_context_t    developer_ctx;
@@ -102,7 +101,7 @@ struct enclave_loader_t
     struct crypto_ds_signature_t  sig;
 };
 
-#if __cplusplus
+#ifdef __cplusplus
 extern "C"
 {
 #endif
@@ -112,13 +111,13 @@ err_t enclave_loader_start(struct enclave_loader_t* ctx);
 err_t enclave_loader_add(
     struct enclave_loader_t* ctx, unsigned char* data, size_t len);
 
-bool enclave_loader_report(struct enclave_loader_t* ctx,
+int enclave_loader_report(struct enclave_loader_t* ctx,
     struct enclave_key_store_t* rot, unsigned char* developer_pk_pem,
     size_t developer_pk_len, unsigned char* sig_device_auth_b64,
     size_t sig_device_auth_b64_len, unsigned char* sig_binary_b64,
     size_t                        sig_binary_b64_len,
     struct crypto_ds_signature_t* sig_binary_session);
-#if __cplusplus
+#ifdef __cplusplus
 };
 #endif
 /**
@@ -126,7 +125,7 @@ bool enclave_loader_report(struct enclave_loader_t* ctx,
  */
 struct enclave_attestation_challenge_t
 {
-    bool                       in_use;
+    int                       in_use;
     struct crypto_dh_context_t dh_ctx;
     struct crypto_dh_curve_t   curve;
 };
@@ -137,7 +136,7 @@ struct enclave_attestation_report_t
     struct enclave_key_report_t cert;
 };
 
-#if __cplusplus
+#ifdef __cplusplus
 extern "C"
 {
 #endif
@@ -151,13 +150,13 @@ err_t enclave_ra_response(in struct crypto_dh_context_t* ctx,
     out struct enclave_attestation_report_t* report,
     out struct crypto_dh_key_t*              secrete_key);
 
-bool  enclave_ra_verify(in struct enclave_attestation_challenge_t* ctx,
+int  enclave_ra_verify(in struct enclave_attestation_challenge_t* ctx,
      in struct enclave_session_mgmt_t*                             mgmt,
      in struct crypto_ds_public_key_t*                             remote_device,
      in unsigned char                        hash_binary[32],
      in struct enclave_attestation_report_t* report,
      out struct crypto_dh_key_t*             secrete_key);
-#if __cplusplus
+#ifdef __cplusplus
 };
 #endif
 #ifdef _KERN_

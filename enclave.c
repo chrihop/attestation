@@ -1,5 +1,7 @@
-#ifdef _STD_LIBC_
 #include <enclave.h>
+
+#ifdef _STD_LIBC_
+#elif defined(_LINUX_KERNEL_)
 #else
 #include <enclave.h>
 #include <lib/string.h>
@@ -26,7 +28,7 @@ enclave_key_native(struct enclave_key_store_t* ctx)
 }
 
 /* verify endorsement certificate from another device */
-bool
+int
 enclave_key_remote(struct enclave_key_verifier_t* ctx,
     struct crypto_ds_public_key_t*                remote_device,
     struct crypto_ds_public_key_t*                session_key,
@@ -94,7 +96,7 @@ enclave_key_generate_report(struct enclave_key_store_t* ctx,
     return (ERR_OK);
 }
 
-bool
+int
 enclave_key_verify_report(struct enclave_key_verifier_t* ctx,
     struct crypto_dh_curve_t* curve, struct crypto_dh_key_t* shared,
     struct crypto_ds_signature_t* sig_dh,
@@ -201,7 +203,7 @@ enclave_session_mgmt_get(struct enclave_session_mgmt_t* mgmt,
         return ENCLAVE_KEY_SESSION_NOT_FOUND;
     }
     struct enclave_key_verifier_t* v = &mgmt->sessions[s];
-    bool                           succ
+    int                           succ
         = enclave_key_remote(v, remote_device, session_key, session_signature);
 
     if (!succ)
@@ -246,7 +248,7 @@ enclave_loader_add(
     return (ERR_OK);
 }
 
-bool
+int
 enclave_loader_report(struct enclave_loader_t* ctx,
     struct enclave_key_store_t* rot, unsigned char* developer_pk_pem,
     size_t developer_pk_len, unsigned char* sig_device_auth_b64,
@@ -323,7 +325,7 @@ enclave_ra_response(in struct crypto_dh_context_t* ctx,
     return (ERR_OK);
 }
 
-bool
+int
 enclave_ra_verify(in struct enclave_attestation_challenge_t* ctx,
     in struct enclave_session_mgmt_t*                        mgmt,
     in struct crypto_ds_public_key_t*                        remote_device,
@@ -343,7 +345,7 @@ enclave_ra_verify(in struct enclave_attestation_challenge_t* ctx,
 
     struct enclave_key_verifier_t* v = &mgmt->sessions[s];
 
-    bool                           match;
+    int                           match;
     match = enclave_key_verify_report(v, &ctx->curve, &report->shared_key,
         &report->cert.sig_dh, &report->cert.sig_binary, hash_binary);
     if (!match)
@@ -462,7 +464,7 @@ enclave_elf_load(uintptr_t exe_ptr, pid_t pid)
 
     struct enclave_t* e = enclave_pool_get_enclave(&enclave_pool, eid);
 
-    bool              match;
+    int              match;
     /* verify binary */
     match = enclave_loader_report(&enclave_platform.loader[cpu],
         &enclave_platform.root_of_trust, (uint8_t*)public_key, public_key_sz,

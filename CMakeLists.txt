@@ -61,6 +61,32 @@ target_compile_definitions(enclave
 add_dependencies(enclave
     crypto)
 
+
+add_library(enclave_linux
+    STATIC
+    enclave.c
+    )
+
+target_compile_options(enclave_linux
+    PRIVATE
+    -nostdlib
+)
+
+target_include_directories(enclave_linux
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_compile_definitions(enclave_linux
+    PRIVATE
+    _LINUX_KERNEL_
+    )
+
+add_dependencies(enclave_linux
+    enclave_linux)
+
+
 #if (CMAKE_BUILD_TYPE MATCHES DEBUG)
 #    set(BACKEND_LIBRARY ${CMAKE_SOURCE_DIR}/backend/${CMAKE_SYSTEM_PROCESSOR}/libmbedcrypto_debug.a)
 #else ()

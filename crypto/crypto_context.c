@@ -1,6 +1,7 @@
 #include "crypto_context.h"
 
 #ifdef _STD_LIBC_
+
 #include <execinfo.h>
 void
 os_exit(int status)
@@ -36,45 +37,6 @@ os_printf(const char* format, ...)
     vprintf(format, args);
     va_end(args);
     return 0;
-}
-
-void
-memdump(const void* s, unsigned int n)
-{
-    uint8_t v;
-    size_t  i, j;
-
-    os_printf("-- %lu B --\n", n);
-    os_printf("%08x: ", ((uintptr_t)s));
-    for (i = 0; i < n; i++)
-    {
-        v = *(((uint8_t*)s) + i);
-        os_printf("%02x", v);
-
-        if ((i + 1) % 16 == 0 && i != 0)
-        {
-            os_printf(" | ");
-            for (j = i - 15; j < i; j++)
-            {
-                v = *(((uint8_t*)s) + j);
-                os_printf("%c", 0x20 <= v && v <= 0x7e ? v : '.');
-            }
-            os_printf(" |\n%08x: ", ((uintptr_t)s) + i + 1);
-        }
-        else if ((i + 1) % 8 == 0 && i != 0)
-        {
-            os_printf("    ");
-        }
-        else if ((i + 1) % 4 == 0 && i != 0)
-        {
-            os_printf("  ");
-        }
-        else
-        {
-            os_printf(" ");
-        }
-    }
-    os_printf("\n------\n");
 }
 
 void print_backtrace(void)
