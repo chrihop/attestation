@@ -142,8 +142,10 @@ add_custom_command(
 add_custom_command(OUTPUT ${DRIVER}
     COMMAND ${KBUILD_CMD}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS ${DRIVER_SRC} demo_enclave_linux_driver.context.tstamp
+    DEPENDS ${DRIVER_SRC}
+        demo_enclave_linux_driver.context.tstamp
         mbedtls_fake_headers.tstamp
+        mbedtls-patch
     VERBATIM
     )
 

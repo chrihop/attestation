@@ -95,3 +95,14 @@ add_custom_command(
 add_custom_target(mbedtls-config
     DEPENDS mbedtls_config.tstamp)
 
+add_custom_command(
+    OUTPUT mbedtls.patch.tstamp
+    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${CMAKE_SOURCE_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${CMAKE_SOURCE_DIR}/config/mbedtls_v3.2.1.patch
+    COMMAND ${CMAKE_COMMAND} -E touch mbedtls.patch.tstamp
+    WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
+    COMMENT "patch mbedtls for linux kernel module ..."
+    VERBATIM
+)
+
+add_custom_target(mbedtls-patch
+    DEPENDS mbedtls.patch.tstamp)
