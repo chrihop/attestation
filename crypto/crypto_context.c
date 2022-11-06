@@ -62,7 +62,7 @@ void print_backtrace(void)
 }
 
 void
-panic(const char* s, ...)
+PANIC(const char* s, ...)
 {
     va_list args;
     va_start(args, s);
@@ -116,6 +116,56 @@ os_printf(const char* format, ...)
 
     va_start(args, format);
     rv = vdprintf(cputs, format, &args);
+    va_end(args);
+    return (rv);
+}
+
+#elif defined(_CERTIKOS_USER_)
+
+#include <stdio.h>
+
+void
+os_exit(int status)
+{
+    PANIC("kernel halt (%d)\n", status);
+}
+
+int
+os_snprintf(char* s, size_t n, const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    va_start(args, format);
+    rv = __builtin_vsprintf(s, format, args);
+    va_end(args);
+    return (rv);
+}
+
+unsigned char  _stderr[1];
+unsigned char* stderr = _stderr;
+
+int
+os_fprintf(void* stream, const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    printf("0x%lx |> ", stream);
+    va_start(args, format);
+    rv = vcprintf(format, &args);
+    va_end(args);
+    return (rv);
+}
+
+int
+os_printf(const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    va_start(args, format);
+    rv = vcprintf(format, &args);
     va_end(args);
     return (rv);
 }
@@ -180,9 +230,6 @@ os_fprintf(void* stream, const char* format, ...)
 void
 os_exit(int status)
 {
-    int rv;
-    va_list args;
-
     os_printf("panic exit (%d)", status);
     __crypto_import_panic(status);
 }

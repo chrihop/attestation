@@ -27,8 +27,53 @@ set(BACKEND_DIR                 ${ATTESTATION_TOP_DIR}/backend)
 set(BACKEND_BUILD_DIR           ${ATTESTATION_TOP_BUILD_DIR}/backend)
 
 option(BAREMETAL "Baremetal build" OFF)
+option(CERTIKOS_USER "CertikOS user build" OFF)
 
-if (NOT BAREMETAL)
+if (BAREMETAL)
+
+    if (CERTIKOS_USER)
+
+        add_definitions(-D_CERTIKOS_USER_)
+
+    else()
+        message(STATUS "Baremetal build")
+
+        add_compile_options(-nostdlib -nostdinc -ffreestanding -fno-builtin
+            -fno-common -fno-exceptions -fno-stack-protector
+            -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-strict-aliasing
+            -fno-omit-frame-pointer -fno-strict-overflow -fno-delete-null-pointer-checks
+            -fno-PIE -fno-pic -fno-pie -fno-pic -fno-stack-protector -fno-unwind-tables
+            -fno-asynchronous-unwind-tables -fno-exceptions -fno-omit-frame-pointer
+            -fno-delete-null-pointer-checks)
+
+        add_link_options(
+            -nostdlib -nostdinc -ffreestanding -fno-builtin
+            -fno-common -fno-exceptions -fno-stack-protector
+            -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-strict-aliasing
+            -fno-omit-frame-pointer -fno-strict-overflow -fno-delete-null-pointer-checks
+            -fno-PIE -fno-pic -fno-pie -fno-pic -fno-stack-protector -fno-unwind-tables
+            -fno-asynchronous-unwind-tables -fno-exceptions -fno-omit-frame-pointer
+            -fno-delete-null-pointer-checks
+        )
+
+        execute_process(COMMAND ${CMAKE_C_COMPILER} -print-file-name=libgcc.a
+            OUTPUT_VARIABLE C_LIBGCC_FILE
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+        execute_process(COMMAND ${CMAKE_C_COMPILER} -print-file-name=libm.a
+            OUTPUT_VARIABLE C_LIBM_FILE
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+        link_libraries(
+            ${C_LIBGCC_FILE}
+            ${C_LIBM_FILE}
+        )
+
+        include_directories(${ATTESTATION_TOP_DIR}/inc/baremetal)
+
+    endif()
+
+else()
 
 message(STATUS "Posix libc build")
 
@@ -39,44 +84,9 @@ endif()
 
 add_definitions(-D_STD_LIBC_)
 
-else()
-
-message(STATUS "Baremetal build")
-
-add_compile_options(-nostdlib -nostdinc -ffreestanding -fno-builtin
-    -fno-common -fno-exceptions -fno-stack-protector
-    -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-strict-aliasing
-    -fno-omit-frame-pointer -fno-strict-overflow -fno-delete-null-pointer-checks
-    -fno-PIE -fno-pic -fno-pie -fno-pic -fno-stack-protector -fno-unwind-tables
-    -fno-asynchronous-unwind-tables -fno-exceptions -fno-omit-frame-pointer
-    -fno-delete-null-pointer-checks)
-
-add_link_options(
-    -nostdlib -nostdinc -ffreestanding -fno-builtin
-    -fno-common -fno-exceptions -fno-stack-protector
-    -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-strict-aliasing
-    -fno-omit-frame-pointer -fno-strict-overflow -fno-delete-null-pointer-checks
-    -fno-PIE -fno-pic -fno-pie -fno-pic -fno-stack-protector -fno-unwind-tables
-    -fno-asynchronous-unwind-tables -fno-exceptions -fno-omit-frame-pointer
-    -fno-delete-null-pointer-checks
-)
-
-execute_process(COMMAND ${CMAKE_C_COMPILER} -print-file-name=libgcc.a
-    OUTPUT_VARIABLE C_LIBGCC_FILE
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-execute_process(COMMAND ${CMAKE_C_COMPILER} -print-file-name=libm.a
-    OUTPUT_VARIABLE C_LIBM_FILE
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-link_libraries(
-    ${C_LIBGCC_FILE}
-    ${C_LIBM_FILE}
-)
-
-include_directories(${ATTESTATION_TOP_DIR}/inc/baremetal)
-
 endif()
+
+
 
 include(FetchContent)
 FetchContent_Declare(
@@ -141,43 +151,5 @@ set(BACKEND_LIBRARY ${ATTESTATION_TOP_BUILD_DIR}/backend/mbedtls/library/libmbed
 
 add_custom_target(backend
     DEPENDS mbedcrypto)
-#
-#if (CMAKE_HOST_SYSTEM_NAME MATCHES Linux)
-#
-#configure_file(
-#    ${ATTESTATION_TOP_DIR}/libenclave.mri.in
-#    ${ATTESTATION_TOP_BUILD_DIR}/libenclave.mri
-#)
-#
-#add_custom_command(
-#    OUTPUT libenclave.a.tstamp
-#    DEPENDS enclave crypto backend
-#    COMMAND ${CMAKE_AR} -M < libenclave.mri
-#    COMMAND ${CMAKE_COMMAND} -E touch libenclave.a.tstamp
-#    WORKING_DIRECTORY ${ATTESTATION_TOP_BUILD_DIR}
-#    COMMENT "Merge generated libraries ..."
-#    VERBATIM
-#)
-#
-#else()
-#
-#add_custom_command(
-#    OUTPUT libenclave.a.tstamp
-#    DEPENDS enclave crypto backend
-#    COMMAND ${LIBTOOL} -static -o libenclave_merged.a
-#            libenclave.a crypto/libcrypto.a
-#            ${BACKEND_LIBRARY}
-#    COMMAND ${CMAKE_COMMAND} -E rename libenclave_merged.a libenclave.a
-#    COMMAND ${CMAKE_COMMAND} -E touch libenclave.a.tstamp
-#    WORKING_DIRECTORY ${ATTESTATION_TOP_BUILD_DIR}
-#    COMMENT "Merge generated libraries ..."
-#    VERBATIM
-#)
-#
-#endif()
-#
-#add_custom_target(enclave-merge
-#    DEPENDS
-#    libenclave.a.tstamp)
 
 add_subdirectory(test)

@@ -84,6 +84,8 @@ add_custom_command(
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_PRINTF_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_SNPRINTF_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_VSNPRINTF_ALT
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA256_USE_A64_CRYPTO_IF_PRESENT
     COMMAND ${CMAKE_COMMAND} -E echo "#include \"os.h\"" > include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E cat include/mbedtls/mbedtls_config.h >> include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E rename include/mbedtls/mbedtls_config_os.h include/mbedtls/mbedtls_config.h

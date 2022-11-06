@@ -49,7 +49,7 @@ typedef int err_t;
 #define ERR_OK           0
 #define ERR_OUT_OF_BOUND 1001
 
-void panic(const char* s, ...);
+void PANIC(const char* s, ...);
 
 void * memcpy(void *,const void *, unsigned long);
 
@@ -73,6 +73,21 @@ typedef error_t err_t;
 #ifndef panic
 #define panic(...) KERN_PANIC(__VA_ARGS__)
 #endif
+
+#elif (_CERTIKOS_USER_)
+
+#include <types.h>
+#include <gcc.h>
+#include <debug.h>
+#include <string.h>
+
+#define ERR_OK           0
+#define ERR_OUT_OF_BOUND 1
+
+
+#define _bss        gcc_bss
+
+typedef int err_t;
 
 #else
 
