@@ -1,4 +1,4 @@
-include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${ATTESTATION_TOP_DIR})
 
 add_subdirectory(linux)
 
@@ -12,20 +12,16 @@ target_compile_definitions(demo_enclave_attestation
 
 target_link_libraries(demo_enclave_attestation
     PRIVATE
-    enclave
-    )
-
-add_dependencies(demo_enclave_attestation
-    enclave-merge
+    enclave crypto mbedcrypto
     )
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
 )
 
 link_libraries(
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
 )
@@ -40,8 +36,8 @@ target_compile_definitions(test_crypto_ecc_ecdh
 
 target_include_directories(test_crypto_ecc_ecdh
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_ecc_ecdh
@@ -49,10 +45,6 @@ target_link_libraries(test_crypto_ecc_ecdh
     enclave
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_ecc_ecdh
-    enclave-merge
     )
 
 add_executable(test_crypto_rng
@@ -65,8 +57,8 @@ target_compile_definitions(test_crypto_rng
 
 target_include_directories(test_crypto_rng
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_rng
@@ -74,10 +66,6 @@ target_link_libraries(test_crypto_rng
     enclave
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_rng
-    enclave-merge
     )
 
 add_executable(test_crypto_ecc_ecdsa
@@ -90,8 +78,8 @@ target_compile_definitions(test_crypto_ecc_ecdsa
 
 target_include_directories(test_crypto_ecc_ecdsa
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_ecc_ecdsa
@@ -99,10 +87,6 @@ target_link_libraries(test_crypto_ecc_ecdsa
     enclave
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_ecc_ecdsa
-    enclave-merge
     )
 
 add_executable(test_crypto_md_sha256
@@ -115,8 +99,8 @@ target_compile_definitions(test_crypto_md_sha256
 
 target_include_directories(test_crypto_md_sha256
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_md_sha256
@@ -126,10 +110,6 @@ target_link_libraries(test_crypto_md_sha256
     GTest::gmock
     )
 
-add_dependencies(test_crypto_md_sha256
-    enclave-merge
-    )
-
 add_executable(test_crypto_rot
     test_crypto_rot.cc
     )
@@ -137,10 +117,6 @@ add_executable(test_crypto_rot
 target_compile_definitions(test_crypto_rot
     PRIVATE
     _STD_LIBC_)
-
-add_dependencies(test_crypto_rot
-    enclave-merge
-    )
 
 include(GoogleTest)
 gtest_discover_tests(test_crypto_ecc_ecdh)

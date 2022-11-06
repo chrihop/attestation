@@ -1,6 +1,9 @@
 #ifndef _LIB_CRYPTO_CONTEXT_H_
 #define _LIB_CRYPTO_CONTEXT_H_
 
+int os_printf(const char* format, ...);
+
+
 #ifdef _STD_LIBC_
 /* link with standard libc files */
 #include <stdarg.h>
@@ -54,7 +57,7 @@ void * memset(void *,int, unsigned long);
 
 int memcmp(const void *,const void *, unsigned long);
 
-#else /* _STD_LIBC_ */
+#elif (_CERTIKOS_KERNEL_)
 /* link with certikos kernel */
 #include <lib/common.h>
 #include <lib/error.h>
@@ -71,8 +74,34 @@ typedef error_t err_t;
 #define panic(...) KERN_PANIC(__VA_ARGS__)
 #endif
 
-#endif /* _STD_LIBC_ */
+#else
 
-int os_printf(const char* format, ...);
+#include <inc/baremetal/string.h>
+
+#ifndef TRUE
+#define TRUE (1)
+#endif
+
+#ifndef FALSE
+#define FALSE (0)
+#endif
+
+#define _bss        __attribute__((section(".bss")))
+
+typedef int err_t;
+#define ERR_OK           0
+#define ERR_OUT_OF_BOUND 1
+
+
+#ifndef panic
+#define panic(...)                                                             \
+    do                                                                         \
+    {                                                                          \
+        os_printf(__VA_ARGS__);                                                \
+        os_exit(1);                                                            \
+    } while (0)
+#endif
+
+#endif /* _STD_LIBC_ */
 
 #endif /* _LIB_CRYPTO_CONTEXT_H_ */

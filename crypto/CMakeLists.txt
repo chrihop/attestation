@@ -16,13 +16,13 @@ add_library(crypto
 
 target_include_directories(crypto
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
-target_compile_definitions(crypto
-    PRIVATE
-    _STD_LIBC_)
+add_dependencies(crypto
+    mbedcrypto
+    )
 
 # enclave library is linked with linux kernel modules
 
@@ -39,8 +39,8 @@ target_compile_options(crypto_linux
 
 target_include_directories(crypto_linux
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_compile_definitions(crypto_linux

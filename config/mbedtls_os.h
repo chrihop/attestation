@@ -1,6 +1,12 @@
 #ifndef _MBEDTLS_OS_H_
 #define _MBEDTLS_OS_H_
 
+#ifndef _STD_LIBC_
+extern void * stderr;
+#else
+#include <stdio.h>
+#endif
+
 void os_exit(int status);
 
 int os_snprintf(char * s, unsigned long n, const char * format, ...);

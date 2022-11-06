@@ -72,7 +72,7 @@ panic(const char* s, ...)
     exit(0);
 }
 
-#else
+#elif defined(_CERTIKOS_KERNEL_)
 
 void
 os_exit(int status)
@@ -118,6 +118,73 @@ os_printf(const char* format, ...)
     rv = vdprintf(cputs, format, &args);
     va_end(args);
     return (rv);
+}
+
+#else
+
+#include <stddef.h>
+
+typedef __builtin_va_list va_list;
+
+#define va_start(v,l)	__builtin_va_start(v,l)
+#define va_end(v)	__builtin_va_end(v)
+#define va_arg(v,l)	__builtin_va_arg(v,l)
+
+extern int __crypto_import_vprintf(const char* format, va_list * ap);
+extern int __crypto_import_panic(int status);
+
+
+int
+os_snprintf(char* s, size_t n, const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    va_start(args, format);
+    rv = __builtin_vsprintf(s, format, args);
+    va_end(args);
+    return (rv);
+}
+
+__attribute__((weak)) unsigned char  _stderr[1], _stdout[1];
+__attribute__((weak)) unsigned char* stderr = _stderr;
+__attribute__((weak)) unsigned char* stdout = _stdout;
+
+int
+os_printf(const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    va_start(args, format);
+    rv = __crypto_import_vprintf(format, &args);
+    va_end(args);
+    return (rv);
+}
+
+int
+os_fprintf(void* stream, const char* format, ...)
+{
+    int     rv;
+    va_list args;
+
+    if (stream == stderr) {os_printf("ERR |> ");}
+    else if (stream != stdout) {os_printf("0x%lx |> ", stream);}
+
+    va_start(args, format);
+    rv = __crypto_import_vprintf(format, &args);
+    va_end(args);
+    return (rv);
+}
+
+void
+os_exit(int status)
+{
+    int rv;
+    va_list args;
+
+    os_printf("panic exit (%d)", status);
+    __crypto_import_panic(status);
 }
 
 #endif /* _STD_LIBC_ */

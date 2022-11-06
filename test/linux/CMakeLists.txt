@@ -2,7 +2,7 @@
 set(LINUX_ARCH "x86")
 #--
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${ATTESTATION_TOP_DIR}")
 find_package(KernelHeaders REQUIRED)
 
 set(DRIVER "attestation.ko")
@@ -12,16 +12,16 @@ set(DRIVER_SRC
 add_custom_command(
     OUTPUT demo_enclave_linux_driver.context.tstamp
     COMMAND ${CMAKE_COMMAND} -E create_symlink
-        ${CMAKE_SOURCE_DIR}/crypto/crypto_context_linux_kernel.c
+        ${ATTESTATION_TOP_DIR}/crypto/crypto_context_linux_kernel.c
         ${CMAKE_CURRENT_SOURCE_DIR}/crypto_context_linux_kernel.c
     COMMAND ${CMAKE_COMMAND} -E create_symlink
-        ${CMAKE_SOURCE_DIR}/enclave.c
+        ${ATTESTATION_TOP_DIR}/enclave.c
         ${CMAKE_CURRENT_SOURCE_DIR}/enclave.c
     COMMAND ${CMAKE_COMMAND} -E create_symlink
-        ${CMAKE_SOURCE_DIR}/backend/mbedtls
+        ${ATTESTATION_TOP_DIR}/backend/mbedtls
         ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls
     COMMAND ${CMAKE_COMMAND} -E create_symlink
-        ${CMAKE_SOURCE_DIR}/crypto
+        ${ATTESTATION_TOP_DIR}/crypto
         ${CMAKE_CURRENT_SOURCE_DIR}/crypto
     COMMENT "creating crypto context ..."
     VERBATIM)
@@ -119,7 +119,7 @@ file(
     "obj-m += attestation.o \n"
     "attestation-y += demo_enclave_linux_driver.o crypto_context_linux_kernel.o enclave.o crypto/crypto.o crypto/root_key.o\n"
     "attestation-y += ${MBEDCRYPTO_OBJ}\n"
-    "ccflags-y += -D_LINUX_KERNEL_ -DSIZE_MAX=18446744073709551615UL -include ${CMAKE_SOURCE_DIR}/crypto/crypto_context_linux.h -include ${CMAKE_SOURCE_DIR}/backend/mbedtls/include/mbedtls/mbedtls_config.h -I${CMAKE_SOURCE_DIR} -I${CMAKE_SOURCE_DIR}/backend/mbedtls/include -I${CMAKE_SOURCE_DIR}/backend/mbedtls/library -I${CMAKE_CURRENT_BINARY_DIR}/linux\n"
+    "ccflags-y += -D_LINUX_KERNEL_ -DSIZE_MAX=18446744073709551615UL -include ${ATTESTATION_TOP_DIR}/crypto/crypto_context_linux.h -include ${ATTESTATION_TOP_DIR}/backend/mbedtls/include/mbedtls/mbedtls_config.h -I${ATTESTATION_TOP_DIR} -I${ATTESTATION_TOP_DIR}/backend/mbedtls/include -I${ATTESTATION_TOP_DIR}/backend/mbedtls/library -I${CMAKE_CURRENT_BINARY_DIR}/linux\n"
     "ldflags-y += \n"
 )
 

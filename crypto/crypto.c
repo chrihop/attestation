@@ -3,7 +3,7 @@
 #elif defined(_LINUX_KERNEL_)
 #include <crypto/crypto.h>
 #else
-#include <lib/crypto/crypto.h>
+#include <crypto/crypto.h>
 #endif
 
 void
