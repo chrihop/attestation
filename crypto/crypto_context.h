@@ -1,8 +1,14 @@
 #ifndef _LIB_CRYPTO_CONTEXT_H_
 #define _LIB_CRYPTO_CONTEXT_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int os_printf(const char* format, ...);
 
+#ifdef __cplusplus
+};
+#endif
 
 #ifdef _STD_LIBC_
 /* link with standard libc files */
