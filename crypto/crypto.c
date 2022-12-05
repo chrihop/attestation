@@ -3,7 +3,7 @@
 #elif defined(_LINUX_KERNEL_)
 #include <crypto/crypto.h>
 #else
-#include <lib/crypto/crypto.h>
+#include <crypto/crypto.h>
 #endif
 
 void
@@ -57,7 +57,7 @@ _crypto_panic(
 {
     mbedtls_strerror(error_code, crypto_error_msg, CRYPTO_ERROR_MSG_LEN);
     crypto_error_msg[CRYPTO_ERROR_MSG_LEN - 1] = '\0';
-    panic("fail to invoke the crypto library function (%s at %s:%d). error "
+    PANIC("fail to invoke the crypto library function (%s at %s:%d). error "
           "code %d (%s).\n",
         func, file, line, error_code, crypto_error_msg);
 }

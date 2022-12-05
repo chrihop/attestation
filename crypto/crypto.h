@@ -138,7 +138,7 @@ struct crypto_sc_mac_context_t
     {                                                                          \
         if (!(expr))                                                           \
         {                                                                      \
-            panic("assertion \"" #expr "\" failed in %s at %s:%d. abort!",     \
+            PANIC("assertion \"" #expr "\" failed in %s at %s:%d. abort!",     \
                 __func__, __FILE__, __LINE__);                                 \
         }                                                                      \
     } while (0)

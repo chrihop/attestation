@@ -1,4 +1,4 @@
-include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${ATTESTATION_TOP_DIR})
 
 add_subdirectory(linux)
 
@@ -16,12 +16,12 @@ target_link_libraries(demo_enclave_attestation
     )
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
 )
 
 link_libraries(
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
 )
@@ -36,8 +36,8 @@ target_compile_definitions(test_crypto_ecc_ecdh
 
 target_include_directories(test_crypto_ecc_ecdh
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_ecc_ecdh
@@ -57,8 +57,8 @@ target_compile_definitions(test_crypto_rng
 
 target_include_directories(test_crypto_rng
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_rng
@@ -78,8 +78,8 @@ target_compile_definitions(test_crypto_ecc_ecdsa
 
 target_include_directories(test_crypto_ecc_ecdsa
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_ecc_ecdsa
@@ -99,8 +99,8 @@ target_compile_definitions(test_crypto_md_sha256
 
 target_include_directories(test_crypto_md_sha256
     PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    ${ATTESTATION_TOP_DIR}
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include
     )
 
 target_link_libraries(test_crypto_md_sha256
@@ -144,4 +144,3 @@ gtest_discover_tests(test_crypto_ecc_ecdh)
 gtest_discover_tests(test_crypto_rng)
 gtest_discover_tests(test_crypto_ecc_ecdsa)
 gtest_discover_tests(test_crypto_md_sha256)
-gtest_discover_tests(test_crypto_chacha_poly)

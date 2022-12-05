@@ -3,8 +3,7 @@
 #ifdef _STD_LIBC_
 #elif defined(_LINUX_KERNEL_)
 #else
-#include <enclave.h>
-#include <lib/string.h>
+#include <string.h>
 #endif
 
 /**

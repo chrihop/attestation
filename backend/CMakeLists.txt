@@ -8,24 +8,24 @@ find_package(Git)
 find_program(SED_EXECUTABLE sed
     REQUIRED)
 
-set (MBEDTLS_SRC_DIR    ${CMAKE_SOURCE_DIR}/backend/mbedtls)
+set (MBEDTLS_SRC_DIR    ${ATTESTATION_TOP_DIR}/backend/mbedtls)
 set (MBEDTLS_AS_SUBPROJECT true)
-set (MbedTLS_DIR ${CMAKE_SOURCE_DIR}/backend/mbedtls/cmake)
+set (MbedTLS_DIR ${ATTESTATION_TOP_DIR}/backend/mbedtls/cmake)
 list (APPEND CMAKE_MODULE_PATH
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/cmake
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/cmake
 )
 set (CMAKE_CROSSCOMPILING ON)
-set (CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/config/${CMAKE_SYSTEM_PROCESSOR}.cmake)
+set (CMAKE_TOOLCHAIN_FILE ${ATTESTATION_TOP_DIR}/config/${CMAKE_SYSTEM_PROCESSOR}.cmake)
 set (ENABLE_TESTING OFF)
 add_subdirectory(mbedtls)
 
 configure_file(
-    ${CMAKE_SOURCE_DIR}/config/mbedtls_os.h
-    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include/mbedtls/os.h
+    ${ATTESTATION_TOP_DIR}/config/mbedtls_os.h
+    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include/mbedtls/os.h
 )
 
 add_custom_command(
-    OUTPUT mbedtls_config.tstamp
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mbedtls_config.tstamp
     COMMAND ${GIT_EXECUTABLE} checkout -- include/mbedtls/mbedtls_config.h
     COMMAND ${CMAKE_PYTHON} scripts/config.py --write include/mbedtls/mbedtls_config.h crypto_baremetal
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h set MBEDTLS_HAVE_ASM
@@ -79,13 +79,17 @@ add_custom_command(
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PSA_CRYPTO_DRIVERS
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA256_SMALLER
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA512_SMALLER
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_SETBUF_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_EXIT_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_PRINTF_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_SNPRINTF_ALT
     COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_PLATFORM_VSNPRINTF_ALT
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT
+    COMMAND ${CMAKE_PYTHON} scripts/config.py --file  include/mbedtls/mbedtls_config.h unset MBEDTLS_SHA256_USE_A64_CRYPTO_IF_PRESENT
     COMMAND ${CMAKE_COMMAND} -E echo "#include \"os.h\"" > include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E cat include/mbedtls/mbedtls_config.h >> include/mbedtls/mbedtls_config_os.h
     COMMAND ${CMAKE_COMMAND} -E rename include/mbedtls/mbedtls_config_os.h include/mbedtls/mbedtls_config.h
+    COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/mbedtls_config.tstamp
     WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
     COMMENT "configure mbedtls ..."
     VERBATIM
@@ -93,11 +97,13 @@ add_custom_command(
 )
 
 add_custom_target(mbedtls-config
-    DEPENDS mbedtls_config.tstamp)
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/mbedtls_config.tstamp)
+
+add_dependencies(mbedcrypto mbedtls-config)
 
 add_custom_command(
     OUTPUT mbedtls.patch.tstamp
-    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${CMAKE_SOURCE_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${CMAKE_SOURCE_DIR}/config/mbedtls_v3.2.1.patch
+    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch
     COMMAND ${CMAKE_COMMAND} -E touch mbedtls.patch.tstamp
     WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
     COMMENT "patch mbedtls for linux kernel module ..."
