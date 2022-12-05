@@ -12,11 +12,7 @@ target_compile_definitions(demo_enclave_attestation
 
 target_link_libraries(demo_enclave_attestation
     PRIVATE
-    enclave
-    )
-
-add_dependencies(demo_enclave_attestation
-    enclave-merge
+    enclave crypto mbedcrypto
     )
 
 include_directories(
@@ -46,13 +42,9 @@ target_include_directories(test_crypto_ecc_ecdh
 
 target_link_libraries(test_crypto_ecc_ecdh
     PRIVATE
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_ecc_ecdh
-    enclave-merge
     )
 
 add_executable(test_crypto_rng
@@ -71,13 +63,9 @@ target_include_directories(test_crypto_rng
 
 target_link_libraries(test_crypto_rng
     PRIVATE
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_rng
-    enclave-merge
     )
 
 add_executable(test_crypto_ecc_ecdsa
@@ -96,13 +84,9 @@ target_include_directories(test_crypto_ecc_ecdsa
 
 target_link_libraries(test_crypto_ecc_ecdsa
     PRIVATE
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_ecc_ecdsa
-    enclave-merge
     )
 
 add_executable(test_crypto_md_sha256
@@ -121,13 +105,9 @@ target_include_directories(test_crypto_md_sha256
 
 target_link_libraries(test_crypto_md_sha256
     PRIVATE
-    enclave
+    enclave crypto mbedcrypto
     GTest::gtest_main
     GTest::gmock
-    )
-
-add_dependencies(test_crypto_md_sha256
-    enclave-merge
     )
 
 add_executable(test_crypto_rot
@@ -138,8 +118,25 @@ target_compile_definitions(test_crypto_rot
     PRIVATE
     _STD_LIBC_)
 
-add_dependencies(test_crypto_rot
-    enclave-merge
+add_executable(test_crypto_chacha_poly
+    test_crypto_chacha_poly.cc
+    )
+
+target_compile_definitions(test_crypto_chacha_poly
+    PRIVATE
+    _STD_LIBC_)
+
+target_include_directories(test_crypto_chacha_poly
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_link_libraries(test_crypto_chacha_poly
+    PRIVATE
+    enclave crypto mbedcrypto
+    GTest::gtest_main
+    GTest::gmock
     )
 
 include(GoogleTest)
@@ -147,3 +144,4 @@ gtest_discover_tests(test_crypto_ecc_ecdh)
 gtest_discover_tests(test_crypto_rng)
 gtest_discover_tests(test_crypto_ecc_ecdsa)
 gtest_discover_tests(test_crypto_md_sha256)
+gtest_discover_tests(test_crypto_chacha_poly)
