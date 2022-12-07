@@ -102,17 +102,18 @@ static char crypto_entropy_source[]
       "*G-KaNdRgUkXp2s5v8y/B?E(H+MbQeShVmYq3t6w9z$C&F)J@NcRfUjWnZr4u7x!";
 
 static size_t pseudo_entropy_counter = 32;
-static int pseudo_entropy_source(void * data, unsigned char *output,
-    size_t len, size_t *olen)
+static int
+pseudo_entropy_source(
+    void* data, unsigned char* output, size_t len, size_t* olen)
 {
-    size_t n = sizeof(crypto_entropy_source);
+    size_t n    = sizeof(crypto_entropy_source);
     size_t left = n - pseudo_entropy_counter;
     memcpy(output, crypto_entropy_source, left < len ? left : len);
     if (left < len)
     {
         memset(&output[left], 0xa4, n - left);
     }
-    *olen = len;
+    *olen                  = len;
     pseudo_entropy_counter = (pseudo_entropy_counter + len) % n;
     return 0;
 }
@@ -122,9 +123,9 @@ static struct crypto_rng_context_t crypto_drbg;
 _bss static unsigned char crypto_dynamic_memory[CRYPTO_DYNAMIC_MEMORY_SIZE]
     __attribute__((aligned(32)));
 
-extern int mbedtls_entropy_add_source( mbedtls_entropy_context *ctx,
-                        mbedtls_entropy_f_source_ptr f_source, void *p_source,
-                        size_t threshold, int strong );
+extern int mbedtls_entropy_add_source(mbedtls_entropy_context* ctx,
+    mbedtls_entropy_f_source_ptr f_source, void* p_source, size_t threshold,
+    int strong);
 
 void
 crypto_init(void)
@@ -136,8 +137,8 @@ crypto_init(void)
     /* drbg */
     mbedtls_ctr_drbg_init(&crypto_drbg.ctr_drbg);
     mbedtls_entropy_init(&crypto_drbg.entropy);
-    mbedtls_entropy_add_source(&crypto_drbg.entropy, pseudo_entropy_source,
-        NULL, 32, 1);
+    mbedtls_entropy_add_source(
+        &crypto_drbg.entropy, pseudo_entropy_source, NULL, 32, 1);
 
     crypto_call(mbedtls_ctr_drbg_seed, &crypto_drbg.ctr_drbg,
         mbedtls_entropy_func, &crypto_drbg.entropy,
@@ -231,12 +232,15 @@ crypto_ds_import_pem_keypair(in unsigned char* pem, in size_t pem_len,
     crypto_call(mbedtls_pk_parse_key, &pk, pem, pem_len, passwd, passwd_len,
         mbedtls_ctr_drbg_random, &crypto_drbg.ctr_drbg);
     crypto_assert(mbedtls_pk_get_type(&pk) == MBEDTLS_PK_ECKEY);
-    mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
+    mbedtls_ecp_keypair* ecp = mbedtls_pk_ec(pk);
 
     mbedtls_ecdsa_init(&key_ctx->ecdsa_ctx);
-    crypto_call(mbedtls_ecp_group_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
-    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), &ecp->MBEDTLS_PRIVATE(Q));
-    crypto_call(mbedtls_mpi_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(d), &ecp->MBEDTLS_PRIVATE(d));
+    crypto_call(mbedtls_ecp_group_copy,
+        &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q),
+        &ecp->MBEDTLS_PRIVATE(Q));
+    crypto_call(mbedtls_mpi_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(d),
+        &ecp->MBEDTLS_PRIVATE(d));
 
     mbedtls_pk_free(&pk);
 
@@ -253,10 +257,12 @@ crypto_ds_import_pem_public_key(in unsigned char* pem, in size_t pem_len,
     crypto_call(mbedtls_pk_parse_public_key, &pk, pem, pem_len);
     crypto_assert(mbedtls_pk_get_type(&pk) == MBEDTLS_PK_ECKEY);
 
-    mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
+    mbedtls_ecp_keypair* ecp = mbedtls_pk_ec(pk);
     mbedtls_ecdsa_init(&key_ctx->ecdsa_ctx);
-    crypto_call(mbedtls_ecp_group_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
-    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), &ecp->MBEDTLS_PRIVATE(Q));
+    crypto_call(mbedtls_ecp_group_copy,
+        &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q),
+        &ecp->MBEDTLS_PRIVATE(Q));
 
     mbedtls_pk_free(&pk);
     return (ERR_OK);
@@ -272,9 +278,11 @@ crypto_ds_export_pem_public_key(in struct crypto_ds_context_t* key_ctx,
     const mbedtls_pk_info_t* pk_info
         = mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY);
     crypto_call(mbedtls_pk_setup, &pk, pk_info);
-    mbedtls_ecp_keypair * ecp = mbedtls_pk_ec(pk);
-    crypto_call(mbedtls_ecp_group_copy, &ecp->MBEDTLS_PRIVATE(grp), &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp));
-    crypto_call(mbedtls_ecp_copy, &ecp->MBEDTLS_PRIVATE(Q), &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q));
+    mbedtls_ecp_keypair* ecp = mbedtls_pk_ec(pk);
+    crypto_call(mbedtls_ecp_group_copy, &ecp->MBEDTLS_PRIVATE(grp),
+        &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp));
+    crypto_call(mbedtls_ecp_copy, &ecp->MBEDTLS_PRIVATE(Q),
+        &key_ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q));
 
     crypto_call(mbedtls_pk_write_pubkey_pem, &pk, pem, pem_len);
 
@@ -287,8 +295,7 @@ crypto_ds_export_public_key(
 {
     crypto_call(mbedtls_ecp_point_write_binary,
         &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp),
-        &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q),
-        MBEDTLS_ECP_PF_UNCOMPRESSED,
+        &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), MBEDTLS_ECP_PF_UNCOMPRESSED,
         &pk->len, pk->key, sizeof(pk->key));
     crypto_assert(pk->len < ECDS_PK_SIZE);
 
@@ -300,12 +307,12 @@ crypto_ds_import_public_key(
     out struct crypto_ds_context_t* ctx, in struct crypto_ds_public_key_t* pk)
 {
     /* load curve structure */
-    crypto_call(mbedtls_ecp_group_load, &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp), ECDS_CURVE_SPEC);
+    crypto_call(mbedtls_ecp_group_load, &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp),
+        ECDS_CURVE_SPEC);
     /* load key */
     crypto_call(mbedtls_ecp_point_read_binary,
         &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(grp),
-        &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q),
-        pk->key, pk->len);
+        &ctx->ecdsa_ctx.MBEDTLS_PRIVATE(Q), pk->key, pk->len);
 
     return (ERR_OK);
 }
@@ -342,9 +349,8 @@ crypto_sign_hashed(in struct crypto_ds_context_t* ctx, in unsigned char* sha256,
     out struct crypto_ds_signature_t* sig)
 {
     crypto_call(mbedtls_ecdsa_write_signature, &ctx->ecdsa_ctx,
-        MBEDTLS_MD_SHA256, sha256, 32, sig->signature,
-        MBEDTLS_ECDSA_MAX_LEN, &sig->len,
-        mbedtls_ctr_drbg_random, &crypto_drbg.ctr_drbg);
+        MBEDTLS_MD_SHA256, sha256, 32, sig->signature, MBEDTLS_ECDSA_MAX_LEN,
+        &sig->len, mbedtls_ctr_drbg_random, &crypto_drbg.ctr_drbg);
 
     return (ERR_OK);
 }
@@ -522,8 +528,7 @@ crypto_sc_init(struct crypto_sc_context_t* ctx, sk_t sk, size_t sk_len)
 
     /* and a 12 Bytes nonce */
     crypto_call(mbedtls_sha256_starts, &ctx->sha256_ctx, 0);
-    crypto_call(
-        mbedtls_sha256_update, &ctx->sha256_ctx, ctx->sha256_hash, 32);
+    crypto_call(mbedtls_sha256_update, &ctx->sha256_ctx, ctx->sha256_hash, 32);
     crypto_call(mbedtls_sha256_finish, &ctx->sha256_ctx, ctx->sha256_hash);
 
     /* setup stream cipher */
@@ -574,8 +579,7 @@ crypto_sc_mac_init(in struct crypto_sc_mac_context_t* ctx, in sk_t sk,
 
     /* and a 12 Bytes nonce */
     crypto_call(mbedtls_sha256_starts, &ctx->sha256_ctx, 0);
-    crypto_call(
-        mbedtls_sha256_update, &ctx->sha256_ctx, ctx->sha256_hash, 32);
+    crypto_call(mbedtls_sha256_update, &ctx->sha256_ctx, ctx->sha256_hash, 32);
     crypto_call(mbedtls_sha256_finish, &ctx->sha256_ctx, ctx->sha256_hash);
 
     /* setup stream cipher */
@@ -596,8 +600,8 @@ crypto_sc_mac_encrypt(in struct crypto_sc_mac_context_t* ctx, in message_t msg,
         mbedtls_chachapoly_finish, &ctx->chachapoly, cipher_tag + msg_len);
 
     /* update nonce, and restart */
-    crypto_call(mbedtls_chacha20_update, &ctx->chachapoly.MBEDTLS_PRIVATE(chacha20_ctx),
-        12u,
+    crypto_call(mbedtls_chacha20_update,
+        &ctx->chachapoly.MBEDTLS_PRIVATE(chacha20_ctx), 12u,
         crypto_sc_mac_starter, ctx->sha256_hash);
     crypto_call(mbedtls_chachapoly_starts, &ctx->chachapoly, ctx->sha256_hash,
         MBEDTLS_CHACHAPOLY_ENCRYPT);
@@ -622,13 +626,76 @@ crypto_sc_mac_decrypt(in struct crypto_sc_mac_context_t* ctx,
     crypto_call(mbedtls_chachapoly_finish, &ctx->chachapoly, ctx->poly1305_tag);
 
     /* update nonce, and restart */
-    crypto_call(mbedtls_chacha20_update, &ctx->chachapoly.MBEDTLS_PRIVATE(chacha20_ctx), 12u,
+    crypto_call(mbedtls_chacha20_update,
+        &ctx->chachapoly.MBEDTLS_PRIVATE(chacha20_ctx), 12u,
         crypto_sc_mac_starter, ctx->sha256_hash);
     crypto_call(mbedtls_chachapoly_starts, &ctx->chachapoly, ctx->sha256_hash,
         MBEDTLS_CHACHAPOLY_DECRYPT);
 
-    int diff = memcmp(&cipher_tag[cipher_tag_len - 16u], ctx->poly1305_tag, 16lu);
+    int diff
+        = memcmp(&cipher_tag[cipher_tag_len - 16u], ctx->poly1305_tag, 16lu);
     *msg_len = cipher_tag_len - 16u;
     return (diff ? FALSE : TRUE);
 }
 
+/**
+ * Random Access Cipher - MAC + Nonce
+ */
+err_t
+crypto_rac_init(
+    in struct crypto_rac_context_t* ctx, in sk_t sk, in size_t sk_len)
+{
+    mbedtls_chachapoly_init(&ctx->chachapoly);
+
+    /* create a 32 Bytes key */
+    mbedtls_sha256_init(&ctx->sha256_ctx);
+    crypto_call(mbedtls_sha256_starts, &ctx->sha256_ctx, 0);
+    crypto_call(mbedtls_sha256_update, &ctx->sha256_ctx, sk, sk_len);
+    crypto_call(mbedtls_sha256_finish, &ctx->sha256_ctx, ctx->sha256_hash);
+
+    /* setup stream cipher */
+    crypto_call(mbedtls_chachapoly_setkey, &ctx->chachapoly, ctx->sha256_hash);
+
+    mbedtls_sha256_free(&ctx->sha256_ctx);
+    return (ERR_OK);
+}
+
+err_t
+crypto_rac_encrypt(in struct crypto_rac_context_t* ctx, in message_t msg,
+    in size_t msg_len, out cyphertext_t cipher_tag, out size_t* cipher_tag_len,
+    out nonce_t nonce, out size_t* nonce_len)
+{
+    crypto_rng(ctx->nonce, 12u);
+    crypto_call(mbedtls_chachapoly_starts, &ctx->chachapoly, ctx->nonce,
+        MBEDTLS_CHACHAPOLY_ENCRYPT);
+    crypto_call(
+        mbedtls_chachapoly_update, &ctx->chachapoly, msg_len, msg, cipher_tag);
+    crypto_call(
+        mbedtls_chachapoly_finish, &ctx->chachapoly, cipher_tag + msg_len);
+    memcpy(nonce, ctx->nonce, 12u);
+    *nonce_len = 12u;
+    *cipher_tag_len = msg_len + 16u;
+    return (ERR_OK);
+}
+
+int
+crypto_rac_decrypt(in struct crypto_rac_context_t* ctx, in nonce_t nonce,
+    in size_t nonce_len, in cyphertext_t cipher_tag, in size_t cipher_tag_len,
+    out message_t msg, out size_t* msg_len)
+{
+    if (cipher_tag_len <= 16 || nonce_len != 12)
+    {
+        return (FALSE);
+    }
+
+    crypto_call(mbedtls_chachapoly_starts, &ctx->chachapoly, nonce,
+        MBEDTLS_CHACHAPOLY_DECRYPT);
+    crypto_call(mbedtls_chachapoly_update, &ctx->chachapoly,
+        cipher_tag_len - 16, cipher_tag, msg);
+    crypto_call(mbedtls_chachapoly_finish, &ctx->chachapoly, ctx->poly1305_tag);
+
+    int diff
+        = memcmp(&cipher_tag[cipher_tag_len - 16u], ctx->poly1305_tag, 16lu);
+    *msg_len = cipher_tag_len - 16u;
+    return (diff ? FALSE : TRUE);
+}

@@ -5,18 +5,19 @@
  * Crypto Primitives
  ******************************************************************************/
 
-//#ifdef _STD_LIBC_
-//#include <crypto/mbedtls_import.h>
-//#else
-//#include <lib/crypto/mbedtls_import.h>
-//#endif
+// #ifdef _STD_LIBC_
+// #include <crypto/mbedtls_import.h>
+// #else
+// #include <lib/crypto/mbedtls_import.h>
+// #endif
 
-#include <crypto/mbedtls_import_headers.h>
 #include <crypto/crypto_context.h>
+#include <crypto/mbedtls_import_headers.h>
 
 typedef unsigned char* message_t;    /* plain text message */
 typedef unsigned char* cyphertext_t; /* encrypted message */
 typedef unsigned char* sk_t;         /* private key / symmetric key */
+typedef unsigned char* nonce_t;      /* nonce */
 
 #define CRYPTO_DYNAMIC_MEMORY_SIZE (4096 * 100) /* 400KB */
 
@@ -127,6 +128,18 @@ struct crypto_sc_mac_context_t
     unsigned char              poly1305_tag[16];
 };
 
+/**
+ * Random Access Cipher - MAC + Nonce
+ */
+struct crypto_rac_context_t
+{
+    mbedtls_chachapoly_context chachapoly;
+    mbedtls_sha256_context     sha256_ctx;
+    unsigned char              sha256_hash[32];
+    unsigned char              poly1305_tag[16];
+    unsigned char              nonce[12];
+};
+
 /*******************************************************************************
  * crypto function declaration
  ******************************************************************************/
@@ -151,12 +164,12 @@ extern "C"
     void  crypto_init(void);
 
     /**
- * Key Generation
+     * Key Generation
      */
     err_t crypto_rng(out unsigned char* output, in size_t output_len);
 
     /**
- * Base64
+     * Base64
      */
     err_t crypto_b64_encode(unsigned char* dst, size_t dlen, size_t* olen,
         const unsigned char* src, size_t slen);
@@ -165,7 +178,7 @@ extern "C"
         const unsigned char* src, size_t slen);
 
     /**
- * Secure Hash
+     * Secure Hash
      */
     err_t crypto_hash_init(in crypto_hash_context_t* ctx);
 
@@ -177,7 +190,7 @@ extern "C"
         in crypto_hash_context_t* ctx, unsigned char* result);
 
     /**
- * Digital Signature
+     * Digital Signature
      */
     err_t crypto_ds_init(in struct crypto_ds_context_t* ctx);
 
@@ -222,18 +235,18 @@ extern "C"
         in size_t len, in struct crypto_ds_signature_t* sig, out int* match);
 
     /**
- * PKI
+     * PKI
      */
     err_t crypto_pki_new(in struct crypto_pki_context_t* ctx,
         in struct crypto_ds_context_t*                   authority);
 
-    int  crypto_pki_verify(in struct crypto_pki_context_t* ctx);
+    int   crypto_pki_verify(in struct crypto_pki_context_t* ctx);
 
     err_t crypto_pki_load_signature(in struct crypto_pki_context_t* ctx,
         in char* sig_b64, in size_t sig_len);
 
     /**
- * Key Exchange
+     * Key Exchange
      */
     err_t crypto_dh_genkey(in struct crypto_dh_context_t* ctx,
         out struct crypto_dh_curve_t*                     curve);
@@ -246,7 +259,7 @@ extern "C"
         in struct crypto_dh_key_t* shared, out struct crypto_dh_key_t* secrete);
 
     /**
- * Stream Cipher
+     * Stream Cipher
      */
     err_t crypto_sc_init(
         struct crypto_sc_context_t* ctx, sk_t sk, size_t sk_len);
@@ -259,7 +272,7 @@ extern "C"
         out message_t msg);
 
     /**
- * Stream Cipher - with MAC
+     * Stream Cipher - with MAC
      */
     err_t crypto_sc_mac_init(in struct crypto_sc_mac_context_t* ctx, in sk_t sk,
         in size_t sk_len, in int to_encrypt);
@@ -268,13 +281,26 @@ extern "C"
         in message_t msg, in size_t msg_len, out cyphertext_t cipher_tag,
         out size_t* cipher_tag_len);
 
-    int  crypto_sc_mac_decrypt(in struct crypto_sc_mac_context_t* ctx,
-         in cyphertext_t cipher_tag, in size_t cipher_tag_len, out message_t msg,
-         out size_t* msg_len);
+    int   crypto_sc_mac_decrypt(in struct crypto_sc_mac_context_t* ctx,
+          in cyphertext_t cipher_tag, in size_t cipher_tag_len, out message_t msg,
+          out size_t* msg_len);
+
+    /**
+     * Random Access Cipher - MAC + Nonce
+     */
+    err_t crypto_rac_init(
+        in struct crypto_rac_context_t* ctx, in sk_t sk, in size_t sk_len);
+
+    err_t crypto_rac_encrypt(in struct crypto_rac_context_t* ctx,
+        in message_t msg, in size_t msg_len, out cyphertext_t cipher_tag,
+        out size_t* cipher_tag_len, out nonce_t nonce, out size_t* nonce_len);
+
+    int   crypto_rac_decrypt(in struct crypto_rac_context_t* ctx,
+          in nonce_t nonce, in size_t nonce_len, in cyphertext_t cipher_tag,
+          in size_t cipher_tag_len, out message_t msg, out size_t* msg_len);
 
 #ifdef __cplusplus
 };
 #endif
-
 
 #endif /* _LIB_CRYPTO_CRYPTO_H_ */

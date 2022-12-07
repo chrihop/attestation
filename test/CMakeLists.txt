@@ -139,8 +139,31 @@ target_link_libraries(test_crypto_chacha_poly
     GTest::gmock
     )
 
+add_executable(test_crypto_random_access_cipher
+    test_crypto_random_access_cipher.cc
+    )
+
+target_compile_definitions(test_crypto_random_access_cipher
+    PRIVATE
+    _STD_LIBC_)
+
+target_include_directories(test_crypto_random_access_cipher
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_link_libraries(test_crypto_random_access_cipher
+    PRIVATE
+    enclave crypto mbedcrypto
+    GTest::gtest_main
+    GTest::gmock
+    )
+
+
 include(GoogleTest)
 gtest_discover_tests(test_crypto_ecc_ecdh)
 gtest_discover_tests(test_crypto_rng)
 gtest_discover_tests(test_crypto_ecc_ecdsa)
 gtest_discover_tests(test_crypto_md_sha256)
+gtest_discover_tests(test_crypto_random_access_cipher)
