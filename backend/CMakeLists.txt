@@ -20,11 +20,25 @@ set (ENABLE_TESTING OFF)
 
 # Resolve conflicts with google benchmark
 
-file(COPY_FILE ${MBEDTLS_SRC_DIR}/programs/test/benchmark.c ${MBEDTLS_SRC_DIR}/programs/test/mbedtls-benchmark.c)
-file(READ ${MBEDTLS_SRC_DIR}/programs/test/CMakeLists.txt MBEDTLS_PROGRAM_TEST)
-string(REGEX REPLACE "^(\\s*)benchmark$" "\\1mbedtls-benchmark" MBEDTLS_PROGRAM_TEST "${MBEDTLS_PROGRAM_TEST}")
-file(WRITE ${MBEDTLS_SRC_DIR}/programs/test/CMakeLists.txt "${MBEDTLS_PROGRAM_TEST}")
+find_program(SED
+    sed
+    REQUIRED)
+
+file(COPY_FILE
+    ${MBEDTLS_SRC_DIR}/programs/test/benchmark.c
+    ${MBEDTLS_SRC_DIR}/programs/test/mbedtls-benchmark.c
+    ONLY_IF_DIFFERENT)
+
+execute_process(
+    COMMAND ${SED} -i -E "s/^(\\s*)benchmark\$/\\1mbedtls-benchmark/g"  ${MBEDTLS_SRC_DIR}/programs/test/CMakeLists.txt
+    COMMAND_ECHO STDOUT
+)
 # --
+
+file(COPY_FILE
+    ${ATTESTATION_TOP_DIR}/config/mbedtls_os.h
+    ${MBEDTLS_SRC_DIR}/include/mbedtls/os.h
+    ONLY_IF_DIFFERENT)
 
 add_subdirectory(mbedtls)
 
@@ -107,8 +121,6 @@ add_dependencies(mbedcrypto mbedtls-config)
 
 add_custom_command(
     OUTPUT mbedtls.patch.tstamp
-#    COMMAND ${CMAKE_COMMAND} -E move ${MBEDTLS_SRC_DIR}/programs/test/benchmark.c ${MBEDTLS_SRC_DIR}/programs/test/mbedtls-benchmark.c
-#    COMMAND ${SED} -i -E "s/^(\s*)benchmark\$/\1mbedtls-benchmark/g" CMakeLists.txt
 #    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch
     COMMAND ${CMAKE_COMMAND} -E touch mbedtls.patch.tstamp
     WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
