@@ -11,25 +11,20 @@
 
 #include <enclave.h>
 
-
-static char buffer[1024];
-
 static void print_key(char * name, void * key, size_t sz)
 {
     int i;
     printk(KERN_INFO "%s (size %lu): ", name, sz);
     for (i = 0; i < sz; i++)
     {
-        sprintf(&buffer[i * 2], "%02x", ((unsigned char *)key)[i]);
+        printk(KERN_CONT "%02x", ((unsigned char *)key)[i]);
     }
-    buffer[i * 2] = '\0';
-    printk(KERN_INFO "%s\n", buffer);
 }
 
 static struct crypto_rac_context_t encoder, decoder;
 static uint8_t key[32];
 
-
+#define PAGE_SIZE 4096
 
 struct crypto_registry_t
 {
@@ -49,34 +44,32 @@ static struct crypto_registry_t * crypto_registry_find_entry(size_t tgid, size_t
     {
         if (entry->addr == addr)
         {
-            printk(KERN_INFO "Found entry for tgid %lx, addr %lx\n", tgid, addr);
             print_key("mac", entry->mac, 16);
             print_key("nonce", entry->nonce, 12);
             return entry;
         }
     }
-    printk(KERN_INFO "No entry found for tgid %lx, addr %lx\n", tgid, addr);
     return NULL;
 }
 
 static int encrypt_page(void * page, size_t tgid, size_t addr)
 {
-    void * encrypted = kmalloc(4096 + 16, GFP_KERNEL);
+    void * encrypted = kmalloc(PAGE_SIZE + 16, GFP_KERNEL);
     size_t len, nonce_len;
     uint8_t nonce[12];
 
-    crypto_rac_encrypt(&encoder, page, 4096, encrypted, &len, nonce, &nonce_len);
-    BUG_ON(len != 4096 + 16);
+    crypto_rac_encrypt(&encoder, page, PAGE_SIZE, encrypted, &len, nonce, &nonce_len);
+    BUG_ON(len != PAGE_SIZE + 16);
     BUG_ON(nonce_len != 12);
 
     struct crypto_registry_t * entry = kmalloc(sizeof(struct crypto_registry_t), GFP_KERNEL);
     entry->addr = addr;
     entry->tgid = tgid;
-    memcpy(entry->mac, encrypted + 4096, 16);
+    memcpy(entry->mac, encrypted + PAGE_SIZE, 16);
     memcpy(entry->nonce, nonce, 12);
     hash_add(crypto_registry, &entry->node, addr ^ tgid);
 
-    memcpy(page, encrypted, 4096 + 16);
+    memcpy(page, encrypted, PAGE_SIZE);
     kfree(encrypted);
 
     return 0;
@@ -89,38 +82,38 @@ static int decrypt_page(void * page, size_t tgid, size_t addr)
     {
         return -1;
     }
-    void * encrypted = kmalloc(4096 + 16, GFP_KERNEL);
-    memcpy(encrypted, page, 4096);
-    memcpy(encrypted + 4096, entry->mac, 16);
+    void * encrypted = kmalloc(PAGE_SIZE + 16, GFP_KERNEL);
+    memcpy(encrypted, page, PAGE_SIZE);
+    memcpy(encrypted + PAGE_SIZE, entry->mac, 16);
 
     size_t len;
-    int succ = crypto_rac_decrypt(&decoder, entry->nonce, 12, encrypted, 4096 + 16, page, &len);
-    BUG_ON(len != 4096);
-    BUG_ON(succ != 0);
+    int succ = crypto_rac_decrypt(&decoder, entry->nonce, 12, encrypted, PAGE_SIZE + 16, page, &len);
+    BUG_ON(len != PAGE_SIZE);
+    BUG_ON(succ != 1);
 
-    memcpy(page, encrypted, 4096);
     kfree(encrypted);
-//    hash_del(&entry->node);
+    hash_del(&entry->node);
     return 0;
 }
 
 static void test_program(void)
 {
-    void * page = kmalloc(4096 * 15, GFP_KERNEL);
-    void * backup = kmalloc(4096 * 15, GFP_KERNEL);
+    void * page = kmalloc(PAGE_SIZE * 15, GFP_KERNEL);
+    void * backup = kmalloc(PAGE_SIZE * 15, GFP_KERNEL);
     int i;
-    for (i = 0; i < 4096 * 15; i++)
+    for (i = 0; i < PAGE_SIZE * 15; i++)
     {
         ((uint8_t *)page)[i] = i % 256;
     }
-    memcpy(backup, page, 4096 * 15);
+    memcpy(backup, page, PAGE_SIZE * 15);
+    BUG_ON(memcmp(page, backup, PAGE_SIZE * 15) != 0);
 
     size_t tgid = 3821;
     size_t base = 0x7f7f7f7f0000lu;
     for (i = 0; i < 15; i++)
     {
         printk(KERN_INFO "encrypting page %d\n", i);
-        encrypt_page(page + i * 4096, tgid, base + i);
+        encrypt_page(page + i * PAGE_SIZE, tgid, base + i);
 
         struct crypto_registry_t * entry = crypto_registry_find_entry(tgid, base + i);
         BUG_ON(entry == NULL);
@@ -134,10 +127,15 @@ static void test_program(void)
     {
         get_random_bytes(rand, 1);
         i = rand[0] % 15;
+        if (crypto_registry_find_entry(tgid, base + i) == NULL)
+        {
+            /* this page is already decrypted */
+            continue ;
+        }
         printk(KERN_INFO "decrypting page %d\n", i);
+        decrypt_page(page + i * PAGE_SIZE, tgid, base + i);
 
-        decrypt_page(page + i * 4096, tgid, base + i);
-        BUG_ON(memcmp(page + i * 4096, backup + i * 4096, 4096) != 0);
+        BUG_ON(memcmp(page + i * PAGE_SIZE, backup + i * PAGE_SIZE, PAGE_SIZE) != 0);
         printk(KERN_INFO "decryption successful\n");
     }
 
