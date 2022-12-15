@@ -3,9 +3,14 @@
 
 #include <linux/types.h>
 
+#ifdef INT_MAX
+#undef INT_MAX
 #define INT_MAX     __INT_MAX__
-#define SIZE_MAX    __SIZE_MAX__
+#endif
 
-#include <linux/limits.h>
+#ifdef SIZE_MAX
+#undef SIZE_MAX
+#define SIZE_MAX    __SIZE_MAX__
+#endif
 
 #endif /* !_LINUX_KERNEL_LIMITS_H_ */

@@ -136,6 +136,10 @@ add_dependencies(enclave_linux
 set(BACKEND_LIBRARY ${ATTESTATION_TOP_BUILD_DIR}/backend/mbedtls/library/libmbedcrypto.a)
 
 add_custom_target(backend
-    DEPENDS mbedcrypto)
+    DEPENDS
+    mbedtls-config
+    mbedcrypto)
 
 add_subdirectory(test)
+add_subdirectory(app)
+

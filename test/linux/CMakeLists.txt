@@ -5,7 +5,8 @@ set(LINUX_ARCH "x86")
 list(APPEND CMAKE_MODULE_PATH "${ATTESTATION_TOP_DIR}")
 find_package(KernelHeaders REQUIRED)
 
-set(DRIVER "attestation.ko")
+set(DRIVER_NAME "attestation")
+set(DRIVER "${DRIVER_NAME}.ko")
 set(DRIVER_SRC
     demo_enclave_linux_driver.c)
 
@@ -27,88 +28,14 @@ add_custom_command(
     VERBATIM)
 
 if (CROSS_COMPILE)
-    set (KBUILD_CMD $(MAKE) -C ${KDIR} M=${CMAKE_CURRENT_BINARY_DIR} ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} src=${CMAKE_CURRENT_SOURCE_DIR} modules)
+    set (KBUILD_CMD $(MAKE) -C ${KDIR} M=${CMAKE_CURRENT_BINARY_DIR} ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} src=${CMAKE_CURRENT_SOURCE_DIR})
 else()
-    set (KBUILD_CMD $(MAKE) -C ${KDIR} M=${CMAKE_CURRENT_BINARY_DIR} src=${CMAKE_CURRENT_SOURCE_DIR} modules)
+    set (KBUILD_CMD $(MAKE) -C ${KDIR} M=${CMAKE_CURRENT_BINARY_DIR} src=${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 get_target_property(MBEDCRYPTO_SRC mbedcrypto SOURCES)
 
 message(STATUS "mbedcrypto sources: ${MBEDCRYPTO_SRC}")
-
-#set(MBEDCRYPTO_SRC
-#    aes.c
-#    aesni.c
-#    aria.c
-#    asn1parse.c
-#    asn1write.c
-#    base64.c
-#    bignum.c
-#    camellia.c
-#    ccm.c
-#    chacha20.c
-#    chachapoly.c
-#    cipher.c
-#    cipher_wrap.c
-#    constant_time.c
-#    cmac.c
-#    ctr_drbg.c
-#    des.c
-#    dhm.c
-#    ecdh.c
-#    ecdsa.c
-#    ecjpake.c
-#    ecp.c
-#    ecp_curves.c
-#    entropy.c
-#    entropy_poll.c
-#    error.c
-#    gcm.c
-#    hkdf.c
-#    hmac_drbg.c
-#    md.c
-#    md5.c
-#    memory_buffer_alloc.c
-#    mps_reader.c
-#    mps_trace.c
-#    nist_kw.c
-#    oid.c
-#    padlock.c
-#    pem.c
-#    pk.c
-#    pk_wrap.c
-#    pkcs12.c
-#    pkcs5.c
-#    pkparse.c
-#    pkwrite.c
-#    platform.c
-#    platform_util.c
-#    poly1305.c
-#    psa_crypto.c
-#    psa_crypto_aead.c
-#    psa_crypto_cipher.c
-#    psa_crypto_client.c
-#    psa_crypto_driver_wrappers.c
-#    psa_crypto_ecp.c
-#    psa_crypto_hash.c
-#    psa_crypto_mac.c
-#    psa_crypto_rsa.c
-#    psa_crypto_se.c
-#    psa_crypto_slot_management.c
-#    psa_crypto_storage.c
-#    psa_its_file.c
-#    ripemd160.c
-#    rsa.c
-#    rsa_alt_helpers.c
-#    sha1.c
-#    sha256.c
-#    sha512.c
-#    ssl_debug_helpers_generated.c
-#    threading.c
-#    timing.c
-#    version.c
-#    version_features.c
-#)
 
 foreach(src ${MBEDCRYPTO_SRC})
     get_filename_component(src_name ${src} NAME_WE)
@@ -144,14 +71,28 @@ add_custom_command(
 )
 
 add_custom_command(OUTPUT ${DRIVER}
-    COMMAND ${KBUILD_CMD}
+    COMMAND ${KBUILD_CMD} modules
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${DRIVER_SRC}
+        mbedtls-config
         demo_enclave_linux_driver.context.tstamp
         mbedtls_fake_headers.tstamp
         mbedtls-patch
+    COMMENT "building driver ..."
     VERBATIM
     )
+
+add_custom_command(OUTPUT ${DRIVER}.clean.stamp
+    COMMAND ${KBUILD_CMD} clean
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "cleaning driver ..."
+    VERBATIM
+    )
+
+add_custom_target(${DRIVER_NAME}-clean
+    DEPENDS ${DRIVER}.clean.stamp
+    )
+
 
 add_library(${DRIVER}.objs
     demo_enclave_linux_driver.c
@@ -179,10 +120,10 @@ add_custom_command(OUTPUT "demo_enclave_linux_driver.install.tstamp"
     VERBATIM
     )
 
-add_custom_target(install_driver DEPENDS "demo_enclave_linux_driver.install.tstamp")
+add_custom_target(${DRIVER_NAME}-install DEPENDS "demo_enclave_linux_driver.install.tstamp")
 
 add_custom_command(OUTPUT "demo_enclave_linux_driver.uninstall.tstamp"
     COMMAND sudo rmmod attestation
     )
 
-add_custom_target(uninstall_driver DEPENDS "demo_enclave_linux_driver.uninstall.tstamp")
+add_custom_target(${DRIVER_NAME}-uninstall DEPENDS "demo_enclave_linux_driver.uninstall.tstamp")
