@@ -23,6 +23,7 @@ extern "C"
 #include <backend/mbedtls/include/mbedtls/memory_buffer_alloc.h>
 #include <backend/mbedtls/include/mbedtls/base64.h>
 #include <backend/mbedtls/include/mbedtls/pk.h>
+#include <backend/mbedtls/include/mbedtls/camellia.h>
 
 #ifdef __cplusplus
 };

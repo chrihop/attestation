@@ -97,7 +97,7 @@ void client_handshake(void)
         &ch.report, &c.key);
     if (!match)
     {
-        panic("error: attestation failed!\n");
+        PANIC("error: attestation failed!\n");
     }
 
     printf("peer identity verified!\n");

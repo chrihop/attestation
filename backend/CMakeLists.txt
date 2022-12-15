@@ -17,12 +17,16 @@ list (APPEND CMAKE_MODULE_PATH
 set (CMAKE_CROSSCOMPILING ON)
 set (CMAKE_TOOLCHAIN_FILE ${ATTESTATION_TOP_DIR}/config/${CMAKE_SYSTEM_PROCESSOR}.cmake)
 set (ENABLE_TESTING OFF)
-add_subdirectory(mbedtls)
 
-configure_file(
-    ${ATTESTATION_TOP_DIR}/config/mbedtls_os.h
-    ${ATTESTATION_TOP_DIR}/backend/mbedtls/include/mbedtls/os.h
-)
+# Resolve conflicts with google benchmark
+
+file(COPY_FILE ${MBEDTLS_SRC_DIR}/programs/test/benchmark.c ${MBEDTLS_SRC_DIR}/programs/test/mbedtls-benchmark.c)
+file(READ ${MBEDTLS_SRC_DIR}/programs/test/CMakeLists.txt MBEDTLS_PROGRAM_TEST)
+string(REGEX REPLACE "^(\\s*)benchmark$" "\\1mbedtls-benchmark" MBEDTLS_PROGRAM_TEST "${MBEDTLS_PROGRAM_TEST}")
+file(WRITE ${MBEDTLS_SRC_DIR}/programs/test/CMakeLists.txt "${MBEDTLS_PROGRAM_TEST}")
+# --
+
+add_subdirectory(mbedtls)
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mbedtls_config.tstamp
@@ -103,7 +107,9 @@ add_dependencies(mbedcrypto mbedtls-config)
 
 add_custom_command(
     OUTPUT mbedtls.patch.tstamp
-    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch
+#    COMMAND ${CMAKE_COMMAND} -E move ${MBEDTLS_SRC_DIR}/programs/test/benchmark.c ${MBEDTLS_SRC_DIR}/programs/test/mbedtls-benchmark.c
+#    COMMAND ${SED} -i -E "s/^(\s*)benchmark\$/\1mbedtls-benchmark/g" CMakeLists.txt
+#    COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch || ${GIT_EXECUTABLE} apply ${ATTESTATION_TOP_DIR}/config/mbedtls_v3.2.1.patch
     COMMAND ${CMAKE_COMMAND} -E touch mbedtls.patch.tstamp
     WORKING_DIRECTORY ${MBEDTLS_SRC_DIR}
     COMMENT "patch mbedtls for linux kernel module ..."

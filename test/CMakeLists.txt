@@ -2,6 +2,24 @@ include_directories(${ATTESTATION_TOP_DIR})
 
 add_subdirectory(linux)
 
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG release-1.12.1
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+FetchContent_Declare(googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.7.1)
+
+FetchContent_MakeAvailable(googletest googlebenchmark)
+
+enable_testing()
+
+
 add_executable(demo_enclave_attestation
     demo_enclave_attestation.c)
 
@@ -160,10 +178,29 @@ target_link_libraries(test_crypto_random_access_cipher
     GTest::gmock
     )
 
-
 include(GoogleTest)
 gtest_discover_tests(test_crypto_ecc_ecdh)
 gtest_discover_tests(test_crypto_rng)
 gtest_discover_tests(test_crypto_ecc_ecdsa)
 gtest_discover_tests(test_crypto_md_sha256)
 gtest_discover_tests(test_crypto_random_access_cipher)
+
+add_executable(bench_symmetric_cipher
+    bench_symmetric_cipher.cc
+    )
+
+target_compile_definitions(test_crypto_random_access_cipher
+    PRIVATE
+    _STD_LIBC_)
+
+target_include_directories(bench_symmetric_cipher
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_link_libraries(bench_symmetric_cipher
+    PRIVATE
+    enclave crypto mbedcrypto
+    benchmark::benchmark
+    )

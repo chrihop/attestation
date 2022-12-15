@@ -5,13 +5,14 @@
 #define CHAR_BIT 8 /* Normally in <limits.h> */
 #endif
 
+#include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/limits.h>
 
 typedef int FILE;
 
-extern int * stderr;
+//extern int * stderr;
 
 extern int rand(void);
 

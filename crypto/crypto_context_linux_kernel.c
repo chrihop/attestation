@@ -15,7 +15,7 @@
 #include <linux/random.h>
 #include <linux/module.h>
 
-int * stderr = NULL;
+void * stderr = NULL;
 
 void
 os_exit(int status)
@@ -59,7 +59,7 @@ void print_backtrace(void)
     dump_stack();
 }
 
-void panic(const char* s, ...)
+void PANIC(const char* s, ...)
 {
     va_list args;
     va_start(args, s);

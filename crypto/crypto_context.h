@@ -38,7 +38,7 @@ typedef int err_t;
 #define ERR_OK           0
 #define ERR_OUT_OF_BOUND 1001
 
-void panic(const char* s, ...);
+void PANIC(const char* s, ...);
 
 void memdump(const void* s, unsigned int n);
 
