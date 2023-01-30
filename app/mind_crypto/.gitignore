@@ -2,5 +2,5 @@ Makefile
 Kbuild
 crypto_context_linux_kernel.c
 enclave.c
-./crypto/
-./mbedtls/
+crypto/
+mbedtls/

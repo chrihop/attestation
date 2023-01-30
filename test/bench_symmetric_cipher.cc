@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <numeric>
 #include <vector>
+#include <utility>
 using namespace std;
 
 #include <enclave.h>
@@ -123,38 +124,42 @@ static void
 static void
     BM_AES256CBC(benchmark::State& state)
 {
+    int rv;
     mbedtls_aes_context writer, reader;
     mbedtls_aes_init(&writer);
     mbedtls_aes_init(&reader);
-    mbedtls_aes_setkey_enc(&writer, key, 256);
-    mbedtls_aes_setkey_dec(&reader, key, 256);
+    rv = mbedtls_aes_setkey_enc(&writer, key, 256);
+    rv = mbedtls_aes_setkey_dec(&reader, key, 256);
 
     uint8_t iv[16];
     for (auto _ : state)
     {
         crypto_rng(iv, 16);
-        mbedtls_aes_crypt_cbc(&writer, MBEDTLS_AES_ENCRYPT, 4096, iv, msg, ciphertext);
-        mbedtls_aes_crypt_cbc(&reader, MBEDTLS_AES_DECRYPT, 4096, iv, ciphertext, output);
+        rv = mbedtls_aes_crypt_cbc(&writer, MBEDTLS_AES_ENCRYPT, 4096, iv, msg, ciphertext);
+        rv = mbedtls_aes_crypt_cbc(&reader, MBEDTLS_AES_DECRYPT, 4096, iv, ciphertext, output);
     }
+    benchmark::DoNotOptimize(rv);
 }
 
 static void
     BM_AES128CFB(benchmark::State& state)
 {
+    int rv;
     mbedtls_aes_context writer, reader;
     mbedtls_aes_init(&writer);
     mbedtls_aes_init(&reader);
-    mbedtls_aes_setkey_enc(&writer, key, 256);
-    mbedtls_aes_setkey_dec(&reader, key, 256);
+    rv = mbedtls_aes_setkey_enc(&writer, key, 256);
+    rv = mbedtls_aes_setkey_dec(&reader, key, 256);
 
     uint8_t iv[16];
     for (auto _ : state)
     {
         crypto_rng(iv, 16);
         size_t iv_off = 0;
-        mbedtls_aes_crypt_cfb128(&writer, MBEDTLS_AES_ENCRYPT, 4096, &iv_off, iv, msg, ciphertext);
-        mbedtls_aes_crypt_cfb128(&reader, MBEDTLS_AES_DECRYPT, 4096, &iv_off, iv, ciphertext, output);
+        rv = mbedtls_aes_crypt_cfb128(&writer, MBEDTLS_AES_ENCRYPT, 4096, &iv_off, iv, msg, ciphertext);
+        rv = mbedtls_aes_crypt_cfb128(&reader, MBEDTLS_AES_DECRYPT, 4096, &iv_off, iv, ciphertext, output);
     }
+    benchmark::DoNotOptimize(rv);
 }
 
 BENCHMARK(BM_Warmup)->Iterations(10)->Setup(DoSetup)->Teardown(DoTeardown);

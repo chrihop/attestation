@@ -178,6 +178,10 @@ target_link_libraries(test_crypto_random_access_cipher
     GTest::gmock
     )
 
+target_compile_definitions(test_crypto_random_access_cipher
+    PRIVATE
+    _STD_LIBC_)
+
 include(GoogleTest)
 gtest_discover_tests(test_crypto_ecc_ecdh)
 gtest_discover_tests(test_crypto_rng)
@@ -189,10 +193,6 @@ add_executable(bench_symmetric_cipher
     bench_symmetric_cipher.cc
     )
 
-target_compile_definitions(test_crypto_random_access_cipher
-    PRIVATE
-    _STD_LIBC_)
-
 target_include_directories(bench_symmetric_cipher
     PRIVATE
     ${CMAKE_SOURCE_DIR}
@@ -200,6 +200,22 @@ target_include_directories(bench_symmetric_cipher
     )
 
 target_link_libraries(bench_symmetric_cipher
+    PRIVATE
+    enclave crypto mbedcrypto
+    benchmark::benchmark
+    )
+
+add_executable(bench_asymmetric_cipher
+    bench_asymmetric_cipher.cc
+    )
+
+target_include_directories(bench_asymmetric_cipher
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/backend/mbedtls/include
+    )
+
+target_link_libraries(bench_asymmetric_cipher
     PRIVATE
     enclave crypto mbedcrypto
     benchmark::benchmark
