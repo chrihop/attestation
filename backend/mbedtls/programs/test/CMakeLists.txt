@@ -8,7 +8,7 @@ set(executables_libs
 )
 
 set(executables_mbedcrypto
-    benchmark
+    mbedtls-benchmark
     query_compile_time_config
     zeroize
 )
