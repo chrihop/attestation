@@ -48,6 +48,12 @@ static inline int crypto_snprintf(char *str, size_t size, const char *format, ..
     return ret;
 }
 
+#if __cplusplus
+#define static_assert static_assert
+#else
+#define static_assert _Static_assert
+#endif
+
 enum err_t
 {
     ERR_OK = 0,

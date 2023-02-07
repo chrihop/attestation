@@ -126,14 +126,6 @@ const char *psa_strerror(int32_t status)
     }
 }
 
-struct crypto_global_context_t
-{
-    psa_key_attributes_t aead_default;
-    psa_key_attributes_t ds_default;
-    psa_key_attributes_t ds_pubkey_default;
-    psa_key_attributes_t dh_default;
-};
-
 static struct crypto_global_context_t crypto_global = {
     .aead_default = PSA_KEY_ATTRIBUTES_INIT,
     .ds_default   = PSA_KEY_ATTRIBUTES_INIT,
@@ -160,6 +152,7 @@ static void crypto_global_init()
         PSA_ALG_ECDSA(PSA_ALG_SHA_256));
     psa_set_key_type(&crypto_global.ds_default,
         PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_bits(&crypto_global.ds_default, 256);
 
     crypto_global.ds_pubkey_default = psa_key_attributes_init();
     psa_set_key_usage_flags(&crypto_global.ds_pubkey_default,
@@ -573,7 +566,7 @@ void crypto_ds_free(in_out crypto_ds_context_t * ctx)
     ctx->has_key = 0;
 }
 
-void crypto_ds_sign(in crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
+void crypto_ds_sign(in const crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
     out uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
@@ -593,7 +586,7 @@ void crypto_ds_sign(in crypto_ds_context_t * ctx, in uint8_t * msg, in size_t ms
     crypto_assert(olen == CRYPTO_DS_SIGNATURE_SIZE);
 }
 
-err_t crypto_ds_verify(in crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
+err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
     in uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
@@ -699,17 +692,73 @@ void crypto_ds_import_pubkey(in_out crypto_ds_context_t * ctx,
     ctx->has_key = 1;
 }
 
+void crypto_ds_export_pubkey(in const crypto_ds_context_t * ctx,
+    out uint8_t * pubkey)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->has_key);
+    crypto_assert(pubkey != NULL);
+
+    size_t olen;
+    psa_call(psa_export_public_key,
+        ctx->key,
+        pubkey,
+        CRYPTO_DS_PUBKEY_SIZE,
+        &olen);
+    crypto_assert(olen == CRYPTO_DS_PUBKEY_SIZE);
+}
+
 /**
  * Public Key Infrastructure
  */
-
-typedef struct
+void crypto_pki_load_root(void)
 {
-    psa_key_handle_t key;
-    uint8_t has_key;
-} crypto_pki_context_t;
+    extern unsigned char device_key_pem[];
+    extern size_t device_key_len;
 
+    crypto_global.root.is_root = 1;
+    crypto_global.root.parent = -1;
 
+    crypto_ds_import(&crypto_global.root.ds, device_key_pem, device_key_len);
+}
+
+void crypto_pki_endorse(in const crypto_pki_context_t * endorser, in_out crypto_pki_context_t * endorsee)
+{
+    crypto_assert(endorser != NULL);
+    crypto_assert(endorsee != NULL);
+
+    psa_call(psa_generate_key, &crypto_global.ds_default, &endorsee->ds.key);
+    endorsee->ds.has_key = 1;
+    uint8_t * pubkey = mbedtls_calloc(1, CRYPTO_DS_PUBKEY_SIZE);
+    size_t olen;
+    psa_call(psa_export_public_key, endorsee->ds.key, pubkey, CRYPTO_DS_PUBKEY_SIZE, &olen);
+    crypto_assert(olen == CRYPTO_DS_PUBKEY_SIZE);
+    crypto_ds_sign(&endorser->ds, pubkey, CRYPTO_DS_PUBKEY_SIZE, endorsee->endorsement);
+    mbedtls_free(pubkey);
+    endorsee->parent = endorser->ds.key;
+    endorsee->is_root = 0;
+}
+
+const crypto_pki_context_t * crypto_pki_root(void)
+{
+    return &crypto_global.root;
+}
+
+err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t * endorsement)
+{
+    crypto_ds_context_t endorser = CRYPTO_DS_CONTEXT_INIT;
+    psa_call(psa_import_key, &crypto_global.ds_pubkey_default, pubkey, CRYPTO_DS_PUBKEY_SIZE, &endorser.key);
+    endorser.has_key = 1;
+    err_t rv = crypto_ds_verify(&endorser, identity, CRYPTO_DS_PUBKEY_SIZE, endorsement);
+    crypto_ds_free(&endorser);
+    return rv;
+}
+
+void crypto_pki_free(in_out crypto_pki_context_t * ctx)
+{
+    crypto_assert(ctx != NULL);
+    crypto_ds_free(&ctx->ds);
+}
 
 #if __cplusplus
 };

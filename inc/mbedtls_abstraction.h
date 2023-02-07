@@ -237,18 +237,24 @@ typedef struct crypto_ds_context_t
         .has_key = 0                                                           \
     }
 
-#define CRYPTO_DS_SIGNATURE_SIZE                                               \
+#define __CRYPTO_DS_SIGNATURE_SIZE                                               \
     PSA_SIGN_OUTPUT_SIZE(PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1),    \
         256, PSA_ALG_ECDSA(PSA_ALG_SHA_256))
+
+#define CRYPTO_DS_SIGNATURE_SIZE (64)
+
+static_assert(CRYPTO_DS_SIGNATURE_SIZE == __CRYPTO_DS_SIGNATURE_SIZE,
+    "CRYPTO_DS_SIGNATURE_SIZE missmatch");
+
 
 #define CRYPTO_DS_KEY_SIZE    PSA_KEY_EXPORT_ECC_KEY_PAIR_MAX_SIZE(256)
 
 #define CRYPTO_DS_PUBKEY_SIZE PSA_KEY_EXPORT_ECC_PUBLIC_KEY_MAX_SIZE(256)
 
-void  crypto_ds_sign(in crypto_ds_context_t* ctx, in uint8_t* msg,
+void  crypto_ds_sign(in const crypto_ds_context_t* ctx, in uint8_t* msg,
      in size_t msg_len, out uint8_t* signature);
 
-err_t crypto_ds_verify(in crypto_ds_context_t* ctx, in uint8_t* msg,
+err_t crypto_ds_verify(in const crypto_ds_context_t* ctx, in uint8_t* msg,
     in size_t msg_len, in uint8_t* signature);
 
 void  crypto_ds_import(
@@ -257,7 +263,55 @@ void  crypto_ds_import(
 void crypto_ds_import_pubkey(
     in_out crypto_ds_context_t* ctx, const in uint8_t* pem, size_t pem_len);
 
+void crypto_ds_export_pubkey(in const crypto_ds_context_t * ctx,
+    out uint8_t * pubkey);
+
 void crypto_ds_free(in_out crypto_ds_context_t * ctx);
+
+/**
+ * Public Key Infrastructure
+ */
+
+/**
+ * @brief How to use PKI:
+ * device: load_root() -> root
+ *     root -> endorse() -> key-pair, signature
+ *     key-pair, signature -> verify() -> true / false
+ */
+typedef struct crypto_pki_context_t
+{
+    uint8_t is_root: 1;
+    psa_key_handle_t parent;
+    crypto_ds_context_t ds;
+    uint8_t endorsement[CRYPTO_DS_SIGNATURE_SIZE];
+} crypto_pki_context_t;
+
+#define CRYPTO_PKI_CONTEXT_INIT                                                \
+    {                                                                          \
+        .ds = CRYPTO_DS_CONTEXT_INIT,                                          \
+    }
+
+void crypto_pki_load_root(void);
+
+const crypto_pki_context_t * crypto_pki_root();
+
+void crypto_pki_endorse(in const crypto_pki_context_t * endorser, in_out crypto_pki_context_t * endorsee);
+
+err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t * endorsement);
+
+void crypto_pki_free(in_out crypto_pki_context_t * ctx);
+
+/**
+ * Global Context
+ */
+struct crypto_global_context_t
+{
+    psa_key_attributes_t aead_default;
+    psa_key_attributes_t ds_default;
+    psa_key_attributes_t ds_pubkey_default;
+    psa_key_attributes_t dh_default;
+    crypto_pki_context_t root;
+};
 
 #if __cplusplus
 };

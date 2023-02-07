@@ -331,3 +331,63 @@ TEST_F(MBedTlsAbstraction, digital_signature)
     ASSERT_EQ(blocks_before, blocks_after);
 #endif
 }
+
+TEST_F(MBedTlsAbstraction, pki)
+{
+    crypto_pki_load_root();
+
+#if defined (MBEDTLS_MEMORY_DEBUG)
+    size_t used_before, blocks_before, used_after, blocks_after;
+    mbedtls_memory_buffer_alloc_cur_get(&used_before, &blocks_before);
+#endif
+
+    crypto_pki_context_t A = CRYPTO_PKI_CONTEXT_INIT, B = CRYPTO_PKI_CONTEXT_INIT,
+                         C = CRYPTO_PKI_CONTEXT_INIT, D = CRYPTO_PKI_CONTEXT_INIT;
+    crypto_pki_endorse(crypto_pki_root(), &A);
+    crypto_pki_endorse(&A, &B);
+    crypto_pki_endorse(&B, &C);
+    crypto_pki_endorse(&C, &D);
+
+    puthex_n(A.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    puthex_n(B.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    puthex_n(C.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    puthex_n(D.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+
+
+    err_t rv;
+    vector<uint8_t> endorser(CRYPTO_DS_PUBKEY_SIZE), identity(CRYPTO_DS_PUBKEY_SIZE);
+    crypto_ds_export_pubkey(&C.ds, endorser.data());
+    crypto_ds_export_pubkey(&D.ds, identity.data());
+    rv = crypto_pki_verify(endorser.data(), identity.data(), D.endorsement);
+    ASSERT_EQ(rv, ERR_OK);
+    puthex(identity);
+
+    identity = endorser;
+    crypto_ds_export_pubkey(&B.ds, endorser.data());
+    rv = crypto_pki_verify(endorser.data(), identity.data(), C.endorsement);
+    ASSERT_EQ(rv, ERR_OK);
+    puthex(identity);
+
+    identity = endorser;
+    crypto_ds_export_pubkey(&A.ds, endorser.data());
+    rv = crypto_pki_verify(endorser.data(), identity.data(), B.endorsement);
+    ASSERT_EQ(rv, ERR_OK);
+    puthex(identity);
+
+    identity = endorser;
+    crypto_ds_export_pubkey(&crypto_pki_root()->ds, endorser.data());
+    rv = crypto_pki_verify(endorser.data(), identity.data(), A.endorsement);
+    ASSERT_EQ(rv, ERR_OK);
+    puthex(identity);
+
+    crypto_pki_free(&A);
+    crypto_pki_free(&B);
+    crypto_pki_free(&C);
+    crypto_pki_free(&D);
+
+#if defined (MBEDTLS_MEMORY_DEBUG)
+    mbedtls_memory_buffer_alloc_cur_get(&used_after, &blocks_after);
+    ASSERT_EQ(used_before, used_after);
+    ASSERT_EQ(blocks_before, blocks_after);
+#endif
+}
