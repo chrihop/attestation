@@ -1,4 +1,4 @@
-name: CMake
+name: Target | POSIX
 
 on:
   push:
