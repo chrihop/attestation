@@ -8,7 +8,7 @@
 #elif defined(CERTIKOS_USER)
 #include <threading_certikos.h>
 #elif defined(LINUX_KERNEL)
-#include <threading_linux.h>
+#include <threading_linux_kernel.h>
 #endif
 
 #ifndef THREADING_MUTEX_TYPE_DEFINED

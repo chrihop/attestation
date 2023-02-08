@@ -45,7 +45,7 @@ void _puthex_n(const char * name, const vector<unsigned char> & data, size_t n)
 
 TEST_F(PsaSecureHash, sha256)
 {
-    psa_hash_operation_t op;
+    psa_hash_operation_t op = PSA_HASH_OPERATION_INIT;
 
     std::printf("operation size: %zu\n", sizeof(op));
     psa_status_t status = psa_hash_setup(&op, PSA_ALG_SHA_256);
@@ -77,7 +77,7 @@ TEST_F(PsaSecureHash, sha256)
 
 TEST_F(PsaSecureHash, sha256_memory_leak)
 {
-    psa_hash_operation_t op;
+    psa_hash_operation_t op = PSA_HASH_OPERATION_INIT;
 
     std::printf("operation size: %zu\n", sizeof(op));
     size_t used_before, blocks_before, used_after, blocks_after;
