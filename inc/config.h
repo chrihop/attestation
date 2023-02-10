@@ -3,10 +3,8 @@
 
 #define DYNAMIC_MEMORY_SIZE (4096 * 100) /* 400KB */
 
-#define HASH_BLOCK_BITS     (256)
-#define SYMMETRIC_KEY_BITS  (256)
-#define ASYMMETRIC_KEY_BITS (2048)
-#define ECP_KEY_BITS        (255)
+#define MAX_ENCLAVES      64
+#define MAX_SLOTS         4
 
 
 #endif /* __ATTESTATION_CONFIG_H__ */

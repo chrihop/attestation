@@ -103,7 +103,7 @@ TEST_F(MBedTlsAbstraction, b64)
 
 TEST_F(MBedTlsAbstraction, secure_hash)
 {
-    crypto_hash_context_t ctx;
+    crypto_hash_context_t ctx = CRYPTO_HASH_CONTEXT_INIT;
 
 #if defined (MBEDTLS_MEMORY_DEBUG)
     size_t used_before, blocks_before, used_after, blocks_after;
@@ -134,9 +134,31 @@ TEST_F(MBedTlsAbstraction, secure_hash)
 #endif
 }
 
+TEST_F(MBedTlsAbstraction, secure_hash_multiple)
+{
+    crypto_hash_context_t ctx = CRYPTO_HASH_CONTEXT_INIT;
+    vector<uint8_t> binary(1024 * 20);
+    std::iota(binary.begin(), binary.end(), 0);
+
+    crypto_hash_start(&ctx);
+    crypto_hash_append(&ctx, binary.data(), binary.size());
+    vector<uint8_t> hash(HASH_OUTPUT_SIZE);
+    crypto_hash_report(&ctx, hash.data());
+    puthex(hash);
+
+    crypto_hash_start(&ctx);
+    for (int i = 0; i < 20; i++)
+    {
+        crypto_hash_append(&ctx, binary.data() + i * 1024, 1024);
+    }
+    err_t rv = crypto_hash_verify(&ctx, hash.data());
+    ASSERT_EQ(rv, ERR_OK);
+}
+
+
 TEST_F(MBedTlsAbstraction, aead_cipher)
 {
-    crypto_aead_context_t enc, dec;
+    crypto_aead_context_t enc = CRYPTO_AEAD_CONTEXT_INIT, dec = CRYPTO_AEAD_CONTEXT_INIT;
     vector<uint8_t> nonce(CRYPTO_AEAD_NONCE_SIZE),
         aad(32),
         plain(4096 * 10),
@@ -175,7 +197,7 @@ TEST_F(MBedTlsAbstraction, aead_cipher)
 
 TEST_F(MBedTlsAbstraction, aead_cipher_key)
 {
-    crypto_aead_context_t enc, dec;
+    crypto_aead_context_t enc = CRYPTO_AEAD_CONTEXT_INIT, dec = CRYPTO_AEAD_CONTEXT_INIT;
     vector<uint8_t> key(CRYPTO_AEAD_KEY_SIZE), key2(CRYPTO_AEAD_KEY_SIZE),
         nonce(CRYPTO_AEAD_NONCE_SIZE),
         aad(32),
@@ -290,16 +312,17 @@ TEST_F(MBedTlsAbstraction, digital_signature)
 
     char keypair[] =
         "-----BEGIN EC PRIVATE KEY-----\n"
-        "MHcCAQEEIFu+gs1t0snvHh1OR0tbBLbYIFJKBYy7dcwraPJJYiBUoAoGCCqGSM49\n"
-        "AwEHoUQDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPtSgauwK0qZZyxFRb1N128oAeZ\n"
-        "7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
+        "MHQCAQEEIIgZK7Nmtr7Sk/x7bgKvldJwcef+p1GiWWwudWV9Es7yoAcGBSuBBAAK\n"
+        "oUQDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0IkZxSA91uBTwrP8FD505M/HDH\n"
+        "aJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
         "-----END EC PRIVATE KEY-----\0";
 
     char pubkey[] =
         "-----BEGIN PUBLIC KEY-----\n"
-        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPt\n"
-        "SgauwK0qZZyxFRb1N128oAeZ7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
+        "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0I\n"
+        "kZxSA91uBTwrP8FD505M/HDHaJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
         "-----END PUBLIC KEY-----\0";
+
 
     crypto_ds_import(&A, (const uint8_t *) keypair, sizeof(keypair));
     crypto_ds_import_pubkey(&B, (const uint8_t *) pubkey, sizeof(pubkey));

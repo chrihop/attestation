@@ -131,6 +131,7 @@ static struct crypto_global_context_t crypto_global = {
     .ds_default   = PSA_KEY_ATTRIBUTES_INIT,
     .ds_pubkey_default = PSA_KEY_ATTRIBUTES_INIT,
     .dh_default   = PSA_KEY_ATTRIBUTES_INIT,
+    .root = CRYPTO_PKI_CONTEXT_INIT,
 };
 
 static void crypto_global_init()
@@ -151,7 +152,7 @@ static void crypto_global_init()
     psa_set_key_algorithm(&crypto_global.ds_default,
         PSA_ALG_ECDSA(PSA_ALG_SHA_256));
     psa_set_key_type(&crypto_global.ds_default,
-        PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+        PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_K1));
     psa_set_key_bits(&crypto_global.ds_default, 256);
 
     crypto_global.ds_pubkey_default = psa_key_attributes_init();
@@ -160,7 +161,7 @@ static void crypto_global_init()
     psa_set_key_algorithm(&crypto_global.ds_pubkey_default,
         PSA_ALG_ECDSA(PSA_ALG_SHA_256));
     psa_set_key_type(&crypto_global.ds_pubkey_default,
-        PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1));
+        PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_K1));
 
     crypto_global.dh_default = psa_key_attributes_init();
     psa_set_key_usage_flags(&crypto_global.dh_default,
@@ -210,6 +211,10 @@ crypto_init(void)
 
     /* global */
     crypto_global_init();
+
+    /* pki */
+    crypto_global.root.ds.has_key = 0;
+    crypto_pki_load_root();
 }
 
 /**
@@ -284,6 +289,7 @@ crypto_hash_report(in_out crypto_hash_context_t * ctx,
     psa_call(psa_hash_finish, ctx->operation, output, HASH_OUTPUT_SIZE, &olen);
     crypto_assert(olen == HASH_OUTPUT_SIZE);
     ctx->status = SHS_DONE;
+    psa_hash_abort(ctx->operation);
     mbedtls_free(ctx->operation);
     ctx->operation = NULL;
 }
@@ -298,6 +304,7 @@ crypto_hash_verify(in_out crypto_hash_context_t * ctx,
     psa_status_t status;
     status = psa_hash_verify(ctx->operation, hash, HASH_OUTPUT_SIZE);
     ctx->status = SHS_DONE;
+    psa_hash_abort(ctx->operation);
     mbedtls_free(ctx->operation);
     ctx->operation = NULL;
     return status == PSA_SUCCESS ? ERR_OK : ERR_VERIFICATION_FAILED;
@@ -727,8 +734,11 @@ void crypto_pki_endorse(in const crypto_pki_context_t * endorser, in_out crypto_
     crypto_assert(endorser != NULL);
     crypto_assert(endorsee != NULL);
 
-    psa_call(psa_generate_key, &crypto_global.ds_default, &endorsee->ds.key);
-    endorsee->ds.has_key = 1;
+    if (!endorsee->ds.has_key)
+    {
+        psa_call(psa_generate_key, &crypto_global.ds_default, &endorsee->ds.key);
+        endorsee->ds.has_key = 1;
+    }
     uint8_t * pubkey = mbedtls_calloc(1, CRYPTO_DS_PUBKEY_SIZE);
     size_t olen;
     psa_call(psa_export_public_key, endorsee->ds.key, pubkey, CRYPTO_DS_PUBKEY_SIZE, &olen);

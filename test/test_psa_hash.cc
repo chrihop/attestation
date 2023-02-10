@@ -113,3 +113,46 @@ TEST_F(PsaSecureHash, sha256_memory_leak)
     ASSERT_EQ(used_before, used_after);
     ASSERT_EQ(blocks_before, blocks_after);
 }
+
+TEST_F(PsaSecureHash, sha256_multiple)
+{
+    psa_hash_operation_t op = PSA_HASH_OPERATION_INIT;
+
+    vector<uint8_t> data(512);
+    iota(data.begin(), data.end(), 0);
+
+    psa_status_t status;
+    status = psa_hash_setup(&op, PSA_ALG_SHA_256);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_update(&op, data.data(), data.size());
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    vector<unsigned char> hash_one(32), hash_multiple(32);
+    size_t olen = 0;
+    status = psa_hash_finish(&op, hash_one.data(), hash_one.size(), &olen);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_abort(&op);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_setup(&op, PSA_ALG_SHA_256);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_update(&op, data.data(), data.size() / 2);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_update(&op, data.data() + data.size() / 2, data.size() / 2);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_finish(&op, hash_multiple.data(), hash_multiple.size(), &olen);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_hash_abort(&op);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    puthex(hash_one);
+    puthex(hash_multiple);
+
+    ASSERT_EQ(hash_one, hash_multiple);
+}

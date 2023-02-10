@@ -12,10 +12,10 @@ extern "C" {
 
 unsigned char device_key_pem[] =
         "-----BEGIN EC PRIVATE KEY-----\n"
-        "MHcCAQEEIGEHgXM4i/KVvrE5kNOhmP5P7T0J5y5d6WG05gJJ2grloAoGCCqGSM49\n"
-        "AwEHoUQDQgAEjsE7fk8OvxuVJL/ifjDyg9Ok695wphzM4jqZfLvApbNCCPI5FG1k\n"
-        "6G2s/6T8Wjh1szCegPRXMApIuDXxJsUsKQ==\n"
-        "-----END EC PRIVATE KEY-----\n\0";
+        "MHQCAQEEIIgZK7Nmtr7Sk/x7bgKvldJwcef+p1GiWWwudWV9Es7yoAcGBSuBBAAK\n"
+        "oUQDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0IkZxSA91uBTwrP8FD505M/HDH\n"
+        "aJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
+        "-----END EC PRIVATE KEY-----\0";
 
 unsigned long device_key_len = sizeof(device_key_pem);
 

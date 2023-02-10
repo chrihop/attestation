@@ -273,23 +273,23 @@ TEST_F(PsaAsymmetricCipher, ecdsa256_keygen)
 }
 
 /**
- * ssh-keygen -t ecdsa -b 256 -m pem -f ./ecdsa.txt
+ * openssl ecparam -name secp256k1 -genkey -noout -out ./ecdsa.txt
  */
-static const char ecdsa_key[]
-    = "-----BEGIN EC PRIVATE KEY-----\n"
-      "MHcCAQEEIFu+gs1t0snvHh1OR0tbBLbYIFJKBYy7dcwraPJJYiBUoAoGCCqGSM49\n"
-      "AwEHoUQDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPtSgauwK0qZZyxFRb1N128oAeZ\n"
-      "7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
-      "-----END EC PRIVATE KEY-----\0";
+    char ecdsa_key[] =
+        "-----BEGIN EC PRIVATE KEY-----\n"
+        "MHQCAQEEIIgZK7Nmtr7Sk/x7bgKvldJwcef+p1GiWWwudWV9Es7yoAcGBSuBBAAK\n"
+        "oUQDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0IkZxSA91uBTwrP8FD505M/HDH\n"
+        "aJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
+        "-----END EC PRIVATE KEY-----\0";
 
 /**
- * ssh-keygen -f ./ecdsa.txt -e -m pem > ./ecdsa.txt.pub
+ * openssl ec -in ./ecdsa.txt -pubout -out ./ecdsa_pub.txt
  */
-static const char ecdsa_pubkey[]
-    = "-----BEGIN PUBLIC KEY-----\n"
-      "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPt\n"
-      "SgauwK0qZZyxFRb1N128oAeZ7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
-      "-----END PUBLIC KEY-----\0";
+    char ecdsa_pubkey[] =
+        "-----BEGIN PUBLIC KEY-----\n"
+        "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0I\n"
+        "kZxSA91uBTwrP8FD505M/HDHaJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
+        "-----END PUBLIC KEY-----\0";
 
 TEST_F(PsaAsymmetricCipher, ecdsa256_import_key_sign_verify)
 {
@@ -300,9 +300,9 @@ TEST_F(PsaAsymmetricCipher, ecdsa256_import_key_sign_verify)
     psa_set_key_algorithm(&skattr, PSA_ALG_ECDSA(PSA_ALG_SHA_256));
     psa_set_key_algorithm(&vkattr, PSA_ALG_ECDSA(PSA_ALG_SHA_256));
     psa_set_key_type(
-        &skattr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+        &skattr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_K1));
     psa_set_key_type(
-        &vkattr, PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1));
+        &vkattr, PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_K1));
 
     psa_status_t       status;
     psa_key_handle_t   skey, vkey;
