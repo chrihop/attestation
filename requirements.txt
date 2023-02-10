@@ -1,4 +1,4 @@
 jsonschema
 ecdsa
 jinja2
-elftools
+pyelftools
