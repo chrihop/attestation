@@ -42,7 +42,7 @@ BM_SecureHash(benchmark::State& state)
     vector<unsigned char> data(1024);
     std::iota(data.begin(), data.end(), 0);
     crypto_hash_context_t ctx;
-    vector<uint8_t>                 hash(HASH_OUTPUT_SIZE);
+    vector<uint8_t>                 hash(CRYPTO_HASH_SIZE);
     for (auto _ : state)
     {
         crypto_hash_start(&ctx);
@@ -57,7 +57,7 @@ BM_PsaHash(benchmark::State& state)
     vector<unsigned char> data(1024);
     std::iota(data.begin(), data.end(), 0);
     psa_hash_operation_t op = PSA_HASH_OPERATION_INIT;
-    vector<uint8_t>                 hash(HASH_OUTPUT_SIZE);
+    vector<uint8_t>                 hash(CRYPTO_HASH_SIZE);
     size_t               olen;
     for (auto _ : state)
     {

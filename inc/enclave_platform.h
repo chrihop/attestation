@@ -11,8 +11,8 @@ extern "C"
 
 typedef struct enclave_node_t
 {
-    uint8_t               hash[HASH_OUTPUT_SIZE];
-    uint8_t               slots[HASH_OUTPUT_SIZE][MAX_SLOTS];
+    uint8_t               hash[CRYPTO_HASH_SIZE];
+    uint8_t               slots[CRYPTO_HASH_SIZE][MAX_SLOTS];
     crypto_hash_context_t loader;
 } enclave_node_t;
 
@@ -55,10 +55,8 @@ void            enclave_node_load_chunk(
 /**
  * @brief Verify the chunk being loaded.
  */
-err_t enclave_node_load_verify(enclave_node_t * node,
-    const uint8_t * sig_b64, size_t sig_b64_size,
-    const uint8_t * dvk_pem, size_t dvk_pem_size,
-    const uint8_t * dvk_sig_b64, size_t dvk_sig_b64_size);
+err_t enclave_node_load_verify(enclave_node_t* node, const uint8_t* sig,
+    const uint8_t* dvk_sig, const uint8_t* dvk_pem, size_t dvk_pem_size);
 
 #if defined(__cplusplus) && __cplusplus
 };

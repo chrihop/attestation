@@ -286,8 +286,8 @@ crypto_hash_report(in_out crypto_hash_context_t * ctx,
     crypto_assert(output != NULL);
 
     size_t olen = 0;
-    psa_call(psa_hash_finish, ctx->operation, output, HASH_OUTPUT_SIZE, &olen);
-    crypto_assert(olen == HASH_OUTPUT_SIZE);
+    psa_call(psa_hash_finish, ctx->operation, output, CRYPTO_HASH_SIZE, &olen);
+    crypto_assert(olen == CRYPTO_HASH_SIZE);
     ctx->status = SHS_DONE;
     psa_hash_abort(ctx->operation);
     mbedtls_free(ctx->operation);
@@ -302,7 +302,7 @@ crypto_hash_verify(in_out crypto_hash_context_t * ctx,
     crypto_assert(hash != NULL);
 
     psa_status_t status;
-    status = psa_hash_verify(ctx->operation, hash, HASH_OUTPUT_SIZE);
+    status = psa_hash_verify(ctx->operation, hash, CRYPTO_HASH_SIZE);
     ctx->status = SHS_DONE;
     psa_hash_abort(ctx->operation);
     mbedtls_free(ctx->operation);
@@ -594,7 +594,7 @@ void crypto_ds_sign(in const crypto_ds_context_t * ctx, in uint8_t * msg, in siz
 }
 
 err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
-    in uint8_t * signature)
+    const in uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->has_key);

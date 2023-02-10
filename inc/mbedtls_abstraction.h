@@ -115,7 +115,7 @@ typedef struct crypto_hash_context_t
 } crypto_hash_context_t;
 
 #define CRYPTO_HASH_CONTEXT_INIT  {.status = SHS_NOT_STARTED}
-#define HASH_OUTPUT_SIZE    PSA_HASH_LENGTH(PSA_ALG_SHA_256)
+#define CRYPTO_HASH_SIZE PSA_HASH_LENGTH(PSA_ALG_SHA_256)
 
 void  crypto_hash_start(in_out crypto_hash_context_t* ctx);
 void  crypto_hash_append(in_out crypto_hash_context_t* ctx,
@@ -255,7 +255,7 @@ void  crypto_ds_sign(in const crypto_ds_context_t* ctx, in uint8_t* msg,
      in size_t msg_len, out uint8_t* signature);
 
 err_t crypto_ds_verify(in const crypto_ds_context_t* ctx, in uint8_t* msg,
-    in size_t msg_len, in uint8_t* signature);
+    in size_t msg_len, const in uint8_t* signature);
 
 void  crypto_ds_import(
      in_out crypto_ds_context_t* ctx, const in uint8_t* pem, size_t pem_len);

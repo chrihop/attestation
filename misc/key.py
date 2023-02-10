@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 
-import utils
-import ecdsa
-import hashlib
+import argparse
 import base64
-import io
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+import hashlib
+import json
+import os
+from abc import abstractmethod
+from enum import Enum
+
+import ecdsa
 from elftools.elf.elffile import ELFFile
 from elftools.elf.segments import Segment
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-import argparse
-from enum import Enum
-from abc import abstractmethod
-import os
-import json
+import utils
 
 verbose = 1
 
@@ -29,6 +29,10 @@ def round_up(num, divisor):
 def get_segment_info(p: Segment, *idents):
     v = (p.header[e] for e in idents)
     return v
+
+
+def hexstr(s):
+    return ''.join(f'{b:02x}' for b in s)
 
 
 def get_segment_file_offset(n):
@@ -102,32 +106,37 @@ class ELF:
                 zva = va + fz
                 eva = round_up(va + vz, ELF.PAGE_SIZE)
                 length = 0
+                increment = 0
                 while va < zva:
-                    va += length
-                    fa += length
+                    va += increment
+                    fa += increment
                     if va >= eva:
                         break
                     if bss_va <= va and va + ELF.PAGE_SIZE <= bss_va + bss_sz:
-                        length = ELF.PAGE_SIZE
+                        increment = ELF.PAGE_SIZE
                         continue
                     if va % ELF.PAGE_SIZE != 0:
                         length = min(ELF.PAGE_SIZE - va % ELF.PAGE_SIZE,
                                      zva - va)
                         page = self.load_page(fa, va, length)
                         # update the incremental length to be page aligned
-                        length = ELF.PAGE_SIZE - va % ELF.PAGE_SIZE
+                        increment = ELF.PAGE_SIZE - va % ELF.PAGE_SIZE
                     elif va < round_down(zva, ELF.PAGE_SIZE):
                         length = ELF.PAGE_SIZE
                         page = self.load_page(fa, va, length)
+                        increment = ELF.PAGE_SIZE
                     elif va < zva and fz > 0:
                         length = zva - va
                         page = self.load_page(fa, va, length)
-                        length = ELF.PAGE_SIZE
+                        increment = ELF.PAGE_SIZE
                     else:
-                        length = ELF.PAGE_SIZE
+                        increment = ELF.PAGE_SIZE
                         page = bytearray(ELF.PAGE_SIZE)
                     global verbose
                     if verbose >= 2:
+                        print(
+                            f'{va:08x} {length:08x}: {hashlib.sha256(page).hexdigest()}')
+                    if verbose >= 3:
                         self.dump_page(page, round_down(va, ELF.PAGE_SIZE))
                     m.update(page)
         return m
@@ -201,7 +210,8 @@ class GenericCommand:
 
 class CommandNew(GenericCommand):
     def execute(self):
-        sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256)
+        sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1,
+                                       hashfunc=hashlib.sha256)
         pem = sk.to_pem().decode('ascii')
         with open(self.args.out_file, 'w+') as f:
             f.write(pem)
@@ -254,7 +264,8 @@ class CommandValidate(GenericCommand):
         pk, sig = load_cert(self.args.cert)
         vk: ecdsa.VerifyingKey = sk.get_verifying_key()
         pk_bin = pk.to_string('uncompressed')
-        v = vk.verify(sig, pk_bin, hashfunc=hashlib.sha256, sigdecode=ecdsa.util.sigdecode_der)
+        v = vk.verify(sig, pk_bin, hashfunc=hashlib.sha256,
+                      sigdecode=ecdsa.util.sigdecode_der)
         if v:
             print('valid signature.')
         else:
@@ -272,18 +283,13 @@ class CommandSign(GenericCommand):
         f_pk = f'{self.args.elf}.pk.pem'
         f_sig_pk = f'{self.args.elf}.sig_pk.sig'
         f_sig_bin = f'{self.args.elf}.sig_bin.sig'
-        global verbose
-        if verbose >= 1:
-            print(f'verifying key ({len(pk.to_der())}B): \n {pk.to_pem().decode("ascii")} \n')
-            print(f'binary signature ({len(sig_bin)}B): \n {base64.b64encode(sig_bin).decode("ascii")} \n')
-            print(f'pubkey signature ({len(sig_pk)}B): \n {base64.b64encode(sig_pk).decode("ascii")} \n')
         with open(f_pk, 'w+') as f:
             f.write(pk.to_pem().decode('ascii'))
             f.write('\0')
-        with open(f_sig_pk, 'w+') as f:
-            f.write(base64.b64encode(sig_pk).decode('ascii'))
-        with open(f_sig_bin, 'w+') as f:
-            f.write(base64.b64encode(sig_bin).decode('ascii'))
+        with open(f_sig_pk, 'wb+') as f:
+            f.write(sig_pk)
+        with open(f_sig_bin, 'wb+') as f:
+            f.write(sig_bin)
         return f_pk, f_sig_pk, f_sig_bin
 
     def update_elf_sections(self, elf_in, elf_out, f_pk, f_sig_pk, f_sig_bin):
@@ -302,7 +308,7 @@ class CommandSign(GenericCommand):
         pk, sig_pk = load_cert(self.args.cert)
         # update elf file header
         fake_sig_bin = sk.sign(b'elf', hashfunc=hashlib.sha256)
-        assert(len(fake_sig_bin) == 64)
+        assert (len(fake_sig_bin) == 64)
         msr_elf = f'{self.args.elf}.measure'
         f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(pk, sig_pk,
                                                                  fake_sig_bin)
@@ -314,9 +320,15 @@ class CommandSign(GenericCommand):
         h = elf.sha256sum().digest()
         global verbose
         if verbose >= 1:
-            print(f' binary digest({len(h)}): ' + ' '.join(
+            print(f' binary digest({len(h)}): ' + ''.join(
                 [f'{x:02x}' for x in h]))
         sig_bin = sk.sign(h, hashfunc=hashlib.sha256)
+        if verbose >= 1:
+            print(
+                f'verifying key ({len(pk.to_pem())}B): \n {pk.to_pem().decode("ascii")} \n')
+            print(
+                f'binary signature ({len(sig_bin)}B): \n {hexstr(sig_bin)} \n')
+            print(f'pubkey signature ({len(sig_pk)}B): \n {hexstr(sig_pk)} \n')
         # attach the signatures
         f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(pk, sig_pk,
                                                                  sig_bin)
