@@ -218,16 +218,17 @@ static void BM_digital_signature(benchmark::State & state)
 
     uint8_t keypair[] =
         "-----BEGIN EC PRIVATE KEY-----\n"
-        "MHcCAQEEIFu+gs1t0snvHh1OR0tbBLbYIFJKBYy7dcwraPJJYiBUoAoGCCqGSM49\n"
-        "AwEHoUQDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPtSgauwK0qZZyxFRb1N128oAeZ\n"
-        "7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
+        "MHQCAQEEIIgZK7Nmtr7Sk/x7bgKvldJwcef+p1GiWWwudWV9Es7yoAcGBSuBBAAK\n"
+        "oUQDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0IkZxSA91uBTwrP8FD505M/HDH\n"
+        "aJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
         "-----END EC PRIVATE KEY-----\0";
 
     uint8_t pubkey[] =
         "-----BEGIN PUBLIC KEY-----\n"
-        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElCWQ5N83+DKMkD0O5eHvQIq8UcPt\n"
-        "SgauwK0qZZyxFRb1N128oAeZ7swgbvy45avpQvrHCf2VVFTvKC43J6uNgQ==\n"
+        "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEH6ZLw2s0NqHtnzP83vVdd6sInMk20M0I\n"
+        "kZxSA91uBTwrP8FD505M/HDHaJ2tsxQySd+9x/4qlNQCiOpDUb3eTg==\n"
         "-----END PUBLIC KEY-----\0";
+
 
     crypto_ds_import(&A, keypair, sizeof(keypair));
     crypto_ds_import_pubkey(&B, pubkey, sizeof(pubkey));
@@ -247,14 +248,14 @@ static void BM_psa_ecdsa(benchmark::State & state)
     psa_key_attributes_t key_attr = PSA_KEY_ATTRIBUTES_INIT;
     psa_set_key_usage_flags(&key_attr, PSA_KEY_USAGE_SIGN_MESSAGE);
     psa_set_key_algorithm(&key_attr, PSA_ALG_ECDSA(PSA_ALG_SHA_256));
-    psa_set_key_type(&key_attr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_type(&key_attr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_K1));
     psa_set_key_bits(&key_attr, 256);
 
     psa_key_handle_t pubkey;
     psa_key_attributes_t pubkey_attr = PSA_KEY_ATTRIBUTES_INIT;
     psa_set_key_usage_flags(&pubkey_attr, PSA_KEY_USAGE_VERIFY_MESSAGE);
     psa_set_key_algorithm(&pubkey_attr, PSA_ALG_ECDSA(PSA_ALG_SHA_256));
-    psa_set_key_type(&pubkey_attr, PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_type(&pubkey_attr, PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_K1));
     psa_set_key_bits(&pubkey_attr, 256);
 
     psa_call(psa_generate_key, &key_attr, &key);

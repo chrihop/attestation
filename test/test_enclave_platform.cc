@@ -295,6 +295,7 @@ load_segments(const elfio & reader, vector<uint8_t> & binary, enclave_node_t * n
             else
             {
                 len = 4096lu;
+                ASSERT_TRUE(false);
             }
             enclave_node_load_chunk(node, page.data(), 4096lu);
         }
