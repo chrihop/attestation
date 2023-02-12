@@ -49,13 +49,16 @@ find_path(BINUTILS
 )
 
 add_custom_command(
-    OUTPUT ${ATTESTATION_BUILD_DIR}/sample_enclave_user.signed
+    OUTPUT ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
     COMMAND ${PYTHON} ${ATTESTATION_MISC_DIR}/key.py --command sign
-        --out ${ATTESTATION_BUILD_DIR}/sample_enclave_user.signed
+        --out ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
         --keypair ${DEVELOPER_KEY}
         --cert ${DEVELOPER_CERT}
         --elf ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user
         --binutils ${BINUTILS}/
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
+        ${ATTESTATION_BUILD_DIR}/sample_enclave_user.signed
     WORKING_DIRECTORY ${ATTESTATION_BUILD_DIR}
     DEPENDS ${DEVELOPER_CERT} sample_enclave_user
         ${ATTESTATION_MISC_DIR}/key.py
@@ -63,5 +66,5 @@ add_custom_command(
 
 add_custom_target(
     sample_enclave
-    DEPENDS ${ATTESTATION_BUILD_DIR}/sample_enclave_user.signed
+    DEPENDS ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
 )

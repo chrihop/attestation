@@ -118,7 +118,7 @@ TEST_F(MBedTlsAbstraction, secure_hash)
     {
         crypto_hash_append(&ctx, binary.data() + i * 4096, 4096);
     }
-    vector<uint8_t> hash(HASH_OUTPUT_SIZE);
+    vector<uint8_t> hash(CRYPTO_HASH_SIZE);
     crypto_hash_report(&ctx, hash.data());
     puthex(hash);
 
@@ -142,7 +142,7 @@ TEST_F(MBedTlsAbstraction, secure_hash_multiple)
 
     crypto_hash_start(&ctx);
     crypto_hash_append(&ctx, binary.data(), binary.size());
-    vector<uint8_t> hash(HASH_OUTPUT_SIZE);
+    vector<uint8_t> hash(CRYPTO_HASH_SIZE);
     crypto_hash_report(&ctx, hash.data());
     puthex(hash);
 

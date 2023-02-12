@@ -57,32 +57,23 @@ void enclave_node_load_chunk(
  * | DVK_SIG: Sign(DVK, RSK)        |
  * +--------------------------------+
  */
-err_t enclave_node_load_verify(enclave_node_t * node,
-    const uint8_t * sig_b64, size_t sig_b64_size,
-    const uint8_t * dvk_pem, size_t dvk_pem_size,
-    const uint8_t * dvk_sig_b64, size_t dvk_sig_b64_size)
+err_t
+enclave_node_load_verify(enclave_node_t* node, const uint8_t* sig,
+    const uint8_t* dvk_sig, const uint8_t* dvk_pem, size_t dvk_pem_size)
 {
+    crypto_assert(sig != NULL);
+    crypto_assert(dvk_sig != NULL);
+    crypto_assert(dvk_pem != NULL);
+
+
     err_t err = ERR_OK;
     crypto_hash_report(&node->loader, node->hash);
 
-    uint8_t * chunk_sig = mbedtls_calloc(1, CRYPTO_DS_SIGNATURE_SIZE);
-    uint8_t * dvk_sig   = mbedtls_calloc(1, CRYPTO_DS_SIGNATURE_SIZE);
     uint8_t * dvk       = mbedtls_calloc(1, CRYPTO_DS_PUBKEY_SIZE);
-
-    crypto_assert(chunk_sig != NULL);
-    crypto_assert(dvk_sig != NULL);
     crypto_assert(dvk != NULL);
-
-    size_t olen = 0;
-    crypto_b64_decode(chunk_sig, CRYPTO_DS_SIGNATURE_SIZE, &olen, sig_b64, sig_b64_size);
-    crypto_assert(olen == CRYPTO_DS_SIGNATURE_SIZE);
-
-    crypto_b64_decode(dvk_sig, CRYPTO_DS_SIGNATURE_SIZE, &olen, dvk_sig_b64, dvk_sig_b64_size);
-    crypto_assert(olen == CRYPTO_DS_SIGNATURE_SIZE);
 
     crypto_ds_context_t dds;
     crypto_ds_import_pubkey(&dds, dvk_pem, dvk_pem_size);
-
     crypto_ds_export_pubkey(&dds, dvk);
 
     err = crypto_ds_verify(
@@ -92,7 +83,7 @@ err_t enclave_node_load_verify(enclave_node_t * node,
         goto cleanup;
     }
 
-    err = crypto_ds_verify(&dds, node->hash, HASH_OUTPUT_SIZE, chunk_sig);
+    err = crypto_ds_verify(&dds, node->hash, CRYPTO_HASH_SIZE, sig);
     if (err != ERR_OK)
     {
         goto cleanup;
@@ -100,8 +91,6 @@ err_t enclave_node_load_verify(enclave_node_t * node,
 
 cleanup:
     crypto_ds_free(&dds);
-    mbedtls_free(chunk_sig);
-    mbedtls_free(dvk_sig);
     mbedtls_free(dvk);
 
     return err;

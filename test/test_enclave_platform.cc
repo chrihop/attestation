@@ -50,8 +50,12 @@ class EnclavePlatformTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        static bool init = false;
+        if (init)
+            return;
         crypto_init();
         enclave_platform_init();
+        init = true;
     }
     void TearDown() override
     {
@@ -80,7 +84,7 @@ TEST_F(EnclavePlatformTest, secure_loader_hash_sanity)
     err_t err;
 
     vector<uint8_t>
-        hash(HASH_OUTPUT_SIZE),
+        hash(CRYPTO_HASH_SIZE),
         signature(CRYPTO_DS_SIGNATURE_SIZE);
 
     crypto_hash_context_t hash_ctx = CRYPTO_HASH_CONTEXT_INIT;
@@ -98,6 +102,35 @@ TEST_F(EnclavePlatformTest, secure_loader_hash_sanity)
     ASSERT_EQ(err, ERR_OK);
 }
 
+static void memory_dump(const void * addr, size_t size, uintptr_t offset = 0)
+{
+    printf("-- %lu B --\n", size);
+    for (int i = 1; i <= size; i++)
+    {
+        if ((i % 16) == 1)
+        {
+            printf("%08lx: ", offset + i - 1);
+        }
+
+        printf("%02x", ((uint8_t *)addr)[i - 1]);
+        if (i != 0 && (i % 16) == 0)
+        {
+            printf("\n");
+        }
+        else if (i != 0 && (i % 8) == 0)
+        {
+            printf("    ");
+        }
+        else if (i != 0 && (i % 4) == 0)
+        {
+            printf("  ");
+        }
+        else
+        {
+            printf(" ");
+        }
+    }
+}
 
 TEST_F(EnclavePlatformTest, secure_loader_key_sanity)
 {
@@ -127,7 +160,7 @@ static pair<vector<uint8_t>, vector<uint8_t>>
 {
     err_t err;
     vector<uint8_t>
-        hash(HASH_OUTPUT_SIZE),
+        hash(CRYPTO_HASH_SIZE),
         signature(CRYPTO_DS_SIGNATURE_SIZE),
         cert(CRYPTO_DS_SIGNATURE_SIZE);
 
@@ -167,19 +200,10 @@ TEST_F(EnclavePlatformTest, secure_loader)
         enclave_node_load_chunk(node, binary.data() + i * 1024, 1024);
     }
 
-    vector<uint8_t> sig_b64(CRYPTO_DS_SIGNATURE_SIZE * 3),
-        cert_b64(CRYPTO_DS_SIGNATURE_SIZE * 3);
-    size_t sig_b64_len, cert_b64_len;
-    crypto_b64_encode(sig_b64.data(), sig_b64.size(), &sig_b64_len, signature.data(), signature.size());
-    crypto_b64_encode(cert_b64.data(), cert_b64.size(), &cert_b64_len, cert.data(), cert.size());
-    printf("%s\n%s\n", sig_b64.data(), cert_b64.data());
-
     err = enclave_node_load_verify(
-        node,
-        sig_b64.data(), sig_b64_len,
-        dvk_pem, sizeof(dvk_pem),
-        cert_b64.data(), cert_b64_len);
-    puthex_n(node->hash, HASH_OUTPUT_SIZE);
+        node, signature.data(), cert.data(), dvk_pem, sizeof(dvk_pem));
+
+    puthex_n(node->hash, CRYPTO_HASH_SIZE);
 
     ASSERT_EQ(err, ERR_OK);
 }
@@ -246,25 +270,26 @@ load_segments(const elfio & reader, vector<uint8_t> & binary, enclave_node_t * n
         {
             continue;
         }
-        size_t va = s->get_virtual_address();
-        size_t vz = s->get_memory_size();
         size_t fa = s->get_offset();
+        size_t va = s->get_virtual_address();
         size_t fz = s->get_file_size();
+        size_t vz = s->get_memory_size();
         size_t zva = va + fz;
-        size_t eva = round_up(va + fz, 4096lu);
-        size_t len = 0;
-        vector<uint8_t> page(4096);
+        size_t eva = round_up(va + vz, 4096lu);
+        size_t len = 0, inc = 0;
+        vector<uint8_t> page(4096, 0);
         while (va < zva)
         {
-            va += len;
-            fa += len;
+            va += inc;
+            fa += inc;
+            std::fill(page.begin(), page.end(), 0);
             if (va >= eva)
             {
                 break;
             }
             if (bss_va <= va && va + 4096lu <= bss_va + bss_size)
             {
-                len = 4096lu;
+                inc = 4096lu;
                 continue;
             }
             if (va % 4096lu != 0)
@@ -274,7 +299,7 @@ load_segments(const elfio & reader, vector<uint8_t> & binary, enclave_node_t * n
                     binary.begin() + fa,
                     binary.begin() + fa + len,
                     page.begin() + va % 4096lu);
-                len = 4096lu - va % 4096lu;
+                inc = 4096lu - va % 4096lu;
             }
             else if (va < round_down(zva, 4096lu))
             {
@@ -283,6 +308,7 @@ load_segments(const elfio & reader, vector<uint8_t> & binary, enclave_node_t * n
                     binary.begin() + fa,
                     binary.begin() + fa + len,
                     page.begin());
+                inc = 4096lu;
             }
             else if (va < zva && fz > 0)
             {
@@ -291,12 +317,31 @@ load_segments(const elfio & reader, vector<uint8_t> & binary, enclave_node_t * n
                     binary.begin() + fa,
                     binary.begin() + fa + len,
                     page.begin());
+                for (int i = len; i < 4096lu; i++)
+                {
+                    ASSERT_EQ(page[i], 0);
+                }
+
+                inc = 4096lu;
             }
             else
             {
-                len = 4096lu;
-                ASSERT_TRUE(false);
+                inc = 4096lu;
             }
+#define VERBOSE 0
+#if VERBOSE >= 1
+            crypto_hash_context_t ctx = CRYPTO_HASH_CONTEXT_INIT;
+            vector<uint8_t> hash(CRYPTO_HASH_SIZE);
+            crypto_hash_start(&ctx);
+            crypto_hash_append(&ctx, page.data(), 4096lu);
+            crypto_hash_report(&ctx, hash.data());
+            printf("%08lx %08lx: ", va, len);
+            puthex(hash);
+#endif
+
+#if VERBOSE == 2
+            memory_dump(page.data(), 4096lu, va);
+#endif
             enclave_node_load_chunk(node, page.data(), 4096lu);
         }
     }
@@ -316,12 +361,63 @@ static section * find_section(const string name, const elfio & reader)
     return nullptr;
 }
 
+TEST_F(EnclavePlatformTest, elfio)
+{
+    elfio reader;
+    bool  rv;
+
+    rv = reader.load("sample_enclave_user.signed");
+    ASSERT_TRUE(rv);
+}
+
+TEST_F(EnclavePlatformTest, secure_loader_elf_file_sanity)
+{
+    elfio           reader;
+
+    bool            rv;
+    const char*     path   = "sample_enclave_user.signed";
+    vector<uint8_t> binary = load_file(path);
+    rv                     = reader.load(path);
+    ASSERT_TRUE(rv);
+
+    section* s_dvk = find_section(".enclave.public_key", reader);
+    ASSERT_NE(s_dvk, nullptr);
+    section* s_dvk_sig = find_section(".enclave.pubkey_sig", reader);
+    ASSERT_NE(s_dvk_sig, nullptr);
+    section* s_sig = find_section(".enclave.binary_sig", reader);
+    ASSERT_NE(s_sig, nullptr);
+
+    vector<uint8_t> dvk(CRYPTO_DS_PUBKEY_SIZE);
+    puthex_n(s_dvk_sig->get_data(), s_dvk_sig->get_size());
+    puthex_n(s_sig->get_data(), s_sig->get_size());
+
+    ASSERT_EQ(s_dvk_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
+    ASSERT_EQ(s_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
+
+    crypto_ds_context_t ds = CRYPTO_DS_CONTEXT_INIT;
+    size_t olen;
+    crypto_ds_import_pubkey(
+        &ds, (const uint8_t*)s_dvk->get_data(), s_dvk->get_size());
+    psa_call(psa_export_public_key, ds.key, dvk.data(), dvk.size(), &olen);
+    ASSERT_EQ(olen, dvk.size());
+    puthex(dvk);
+
+    enclave_node_t * node = enclave_node_at(0);
+    enclave_node_load_start(node);
+    load_segments(reader, binary, node);
+    vector<uint8_t> hash(CRYPTO_HASH_SIZE);
+    crypto_hash_report(&node->loader, hash.data());
+    puthex(hash);
+
+    crypto_ds_free(&ds);
+}
+
 TEST_F(EnclavePlatformTest, secure_loader_elf_file)
 {
     elfio reader;
 
     bool rv;
-    const char * path = "../sample_enclave_user.signed";
+    const char * path = "sample_enclave_user.signed";
     vector<uint8_t> binary = load_file(path);
     rv = reader.load( path );
     ASSERT_TRUE(rv);
@@ -365,11 +461,13 @@ TEST_F(EnclavePlatformTest, secure_loader_elf_file)
     ASSERT_NE(s_sig, nullptr);
 
     err_t err;
+    ASSERT_EQ(s_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
+    ASSERT_EQ(s_dvk_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
     err = enclave_node_load_verify(
         node,
-        (const uint8_t *) s_sig->get_data(), s_sig->get_size(),
-        (const uint8_t *) s_dvk->get_data(), s_dvk->get_size(),
-        (const uint8_t *) s_dvk_sig->get_data(), s_dvk_sig->get_size()
-        );
+        (const uint8_t *) s_sig->get_data(),
+        (const uint8_t *) s_dvk_sig->get_data(),
+        (const uint8_t *) s_dvk->get_data(), s_dvk->get_size()
+    );
     ASSERT_EQ(err, ERR_OK);
 }

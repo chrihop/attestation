@@ -37,7 +37,7 @@ add_executable(test_mbedtls_abstraction
 FetchContent_Declare(
     elfio
     GIT_REPOSITORY https://github.com/serge1/ELFIO.git
-    GIT_TAG Release_3.11
+    GIT_TAG 5be0f95443d4816811bfaea2b05258e7b0528064
 )
 set (ELFIO_BUILD_TESTS OFF)
 set (ELFIO_BUILD_EXAMPLES OFF)
