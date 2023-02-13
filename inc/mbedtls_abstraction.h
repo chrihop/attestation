@@ -251,8 +251,8 @@ static_assert(CRYPTO_DS_SIGNATURE_SIZE == __CRYPTO_DS_SIGNATURE_SIZE,
 
 #define CRYPTO_DS_PUBKEY_SIZE PSA_KEY_EXPORT_ECC_PUBLIC_KEY_MAX_SIZE(256)
 
-void  crypto_ds_sign(in const crypto_ds_context_t* ctx, in uint8_t* msg,
-     in size_t msg_len, out uint8_t* signature);
+void crypto_ds_sign(const in crypto_ds_context_t * ctx, const in uint8_t * msg, const in size_t msg_len,
+    out uint8_t * signature);
 
 err_t crypto_ds_verify(in const crypto_ds_context_t* ctx, const in uint8_t* msg,
     in size_t msg_len, const in uint8_t* signature);
@@ -262,6 +262,9 @@ void  crypto_ds_import(
 
 void crypto_ds_import_pubkey(
     in_out crypto_ds_context_t* ctx, const in uint8_t* pem, size_t pem_len);
+
+void crypto_ds_import_pubkey_psa_format(
+    in_out crypto_ds_context_t* ctx, const in uint8_t* pubkey);
 
 void crypto_ds_export_pubkey(in const crypto_ds_context_t * ctx,
     out uint8_t * pubkey);

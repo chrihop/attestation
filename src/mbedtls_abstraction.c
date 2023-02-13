@@ -573,7 +573,7 @@ void crypto_ds_free(in_out crypto_ds_context_t * ctx)
     ctx->has_key = 0;
 }
 
-void crypto_ds_sign(in const crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
+void crypto_ds_sign(const in crypto_ds_context_t * ctx, const in uint8_t * msg, const in size_t msg_len,
     out uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
@@ -696,6 +696,26 @@ void crypto_ds_import_pubkey(in_out crypto_ds_context_t * ctx,
         &ctx->key);
     mbedtls_free(curve);
 
+    ctx->has_key = 1;
+}
+
+void crypto_ds_import_pubkey_psa_format(
+    in_out crypto_ds_context_t * ctx,
+    in const uint8_t * pubkey)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(pubkey != NULL);
+
+    if (ctx->has_key)
+    {
+        psa_call(psa_destroy_key, ctx->key);
+    }
+
+    psa_call(psa_import_key,
+        &crypto_global.ds_pubkey_default,
+        pubkey,
+        CRYPTO_DS_PUBKEY_SIZE,
+        &ctx->key);
     ctx->has_key = 1;
 }
 

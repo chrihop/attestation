@@ -7,6 +7,10 @@ static enclave_platform_context_t epc;
 static void enclave_nodes_mgmt_init(void)
 {
     epc.n_nodes = 0;
+    for (size_t i = 0; i < MAX_ENCLAVES; i++)
+    {
+        epc.nodes[i].node_id = i;
+    }
 }
 
 static size_t enclave_nodes_mgmt_alloc(void)
@@ -25,6 +29,14 @@ void enclave_platform_free()
 {
     crypto_pki_free(&epc.session);
     epc.n_nodes = 0;
+}
+
+enclave_node_t * enclave_node_create(size_t par_id)
+{
+    size_t node_id = enclave_nodes_mgmt_alloc();
+    enclave_node_t * node = enclave_node_at(node_id);
+    node->par_id = par_id;
+    return node;
 }
 
 enclave_node_t * enclave_node_at(size_t node_id)
@@ -147,13 +159,56 @@ cleanup:
  * - mutual attestation [MA]
  */
 
-static void
+void
 enclave_node_report(
-    struct enclave_node_t* node, const uint8_t* dh, uint8_t* report)
+struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report)
 {
     crypto_assert(node != NULL);
     crypto_assert(dh != NULL);
     crypto_assert(report != NULL);
 
+    __builtin_memcpy(report->b.dh, dh, CRYPTO_DH_PUBKEY_SIZE);
+    __builtin_memcpy(report->b.hash, node->hash, CRYPTO_HASH_SIZE);
+    crypto_ds_export_pubkey(&epc.session.ds, report->b.session_pubkey);
+    __builtin_memcpy(report->b.session_sig, epc.session.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    crypto_ds_sign(&epc.session.ds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE, report->report_sig);
 }
 
+err_t
+enclave_report_verify(const enclave_node_report_t* report, const uint8_t * hash,
+    const uint8_t* rvk_pem, size_t rvk_pem_size)
+{
+    crypto_assert(report != NULL);
+    crypto_assert(rvk_pem != NULL);
+
+    err_t err = ERR_OK;
+    crypto_ds_context_t rds = CRYPTO_DS_CONTEXT_INIT,
+                        sds = CRYPTO_DS_CONTEXT_INIT;
+    crypto_ds_import_pubkey(&rds, rvk_pem, rvk_pem_size);
+
+    err = crypto_ds_verify(
+        &rds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE,
+        report->report_sig);
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    crypto_ds_import_pubkey_psa_format(&sds, report->b.session_pubkey);
+    err = crypto_ds_verify(
+        &sds, report->b.session_sig, CRYPTO_DS_SIGNATURE_SIZE,
+        report->b.session_sig);
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    int rv = __builtin_memcmp(report->b.hash, hash, CRYPTO_HASH_SIZE);
+    err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
+
+cleanup:
+    crypto_ds_free(&rds);
+    crypto_ds_free(&sds);
+
+    return err;
+}

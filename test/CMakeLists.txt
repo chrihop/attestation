@@ -56,11 +56,11 @@ FetchContent_MakeAvailable(elfio)
 #set (YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
 #FetchContent_MakeAvailable(yaml_cpp)
 
-add_executable(test_enclave_platform
-    test_enclave_platform.cc)
+add_executable(test_enclave_platform_loader
+    test_enclave_platform_loader.cc)
 
 add_custom_command(
-    TARGET test_enclave_platform
+    TARGET test_enclave_platform_loader
     POST_BUILD
     BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/sample_enclave_user.trust.yaml
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -71,19 +71,22 @@ add_custom_command(
     VERBATIM
 )
 
-target_link_libraries(test_enclave_platform
+target_link_libraries(test_enclave_platform_loader
     PRIVATE
     elfio::elfio
     )
 
-target_include_directories(test_enclave_platform
+target_include_directories(test_enclave_platform_loader
     PRIVATE
     ${YAML_CPP_SOURCE_DIR}/include)
 
 add_dependencies(
-    test_enclave_platform
+    test_enclave_platform_loader
     sample_enclave
 )
+
+add_executable(test_enclave_platform_attestation
+    test_enclave_platform_attestation.cc)
 
 add_custom_target(
     test_suites
@@ -93,7 +96,8 @@ add_custom_target(
     test_psa_kd
     test_psa_hash
     test_mbedtls_abstraction
-    test_enclave_platform
+    test_enclave_platform_loader
+    test_enclave_platform_attestation
 )
 
 # --
@@ -103,7 +107,7 @@ gtest_discover_tests(test_psa_asymmetric_cipher)
 gtest_discover_tests(test_psa_kd)
 gtest_discover_tests(test_psa_hash)
 gtest_discover_tests(test_mbedtls_abstraction)
-gtest_discover_tests(test_enclave_platform)
+gtest_discover_tests(test_enclave_platform_loader)
 # --
 
 #
