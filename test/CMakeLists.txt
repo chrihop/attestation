@@ -42,13 +42,43 @@ FetchContent_Declare(
 set (ELFIO_BUILD_TESTS OFF)
 set (ELFIO_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(elfio)
+#
+#FetchContent_Declare(
+#    yaml_cpp
+#    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+#    GIT_TAG 1b50109f7bea60bd382d8ea7befce3d2bd67da5f
+#)
+#set (YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+#set (YAML_CPP_BUILD_TOOLS OFF  CACHE BOOL "" FORCE)
+#set (YAML_CPP_BUILD_CONTRIB OFF  CACHE BOOL "" FORCE)
+#set (YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
+#set (YAML_CPP_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+#set (YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
+#FetchContent_MakeAvailable(yaml_cpp)
 
 add_executable(test_enclave_platform
     test_enclave_platform.cc)
 
+add_custom_command(
+    TARGET test_enclave_platform
+    POST_BUILD
+    BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/sample_enclave_user.trust.yaml
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/sample_enclave_user.trust.yaml
+        ${CMAKE_CURRENT_BINARY_DIR}/sample_enclave_user.trust.yaml
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Copying sample_enclave_user.trust.yaml"
+    VERBATIM
+)
+
 target_link_libraries(test_enclave_platform
     PRIVATE
-    elfio::elfio)
+    elfio::elfio
+    )
+
+target_include_directories(test_enclave_platform
+    PRIVATE
+    ${YAML_CPP_SOURCE_DIR}/include)
 
 add_dependencies(
     test_enclave_platform

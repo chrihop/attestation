@@ -254,7 +254,7 @@ static_assert(CRYPTO_DS_SIGNATURE_SIZE == __CRYPTO_DS_SIGNATURE_SIZE,
 void  crypto_ds_sign(in const crypto_ds_context_t* ctx, in uint8_t* msg,
      in size_t msg_len, out uint8_t* signature);
 
-err_t crypto_ds_verify(in const crypto_ds_context_t* ctx, in uint8_t* msg,
+err_t crypto_ds_verify(in const crypto_ds_context_t* ctx, const in uint8_t* msg,
     in size_t msg_len, const in uint8_t* signature);
 
 void  crypto_ds_import(

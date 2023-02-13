@@ -58,6 +58,12 @@ void            enclave_node_load_chunk(
 err_t enclave_node_load_verify(enclave_node_t* node, const uint8_t* sig,
     const uint8_t* dvk_sig, const uint8_t* dvk_pem, size_t dvk_pem_size);
 
+/**
+ * @brief Verify the mutual trusted slots.
+ */
+err_t enclave_node_trust_slots_verify(enclave_node_t* node, const uint8_t* slots,
+    const uint8_t* slots_sig, const uint8_t* dvk_pem, size_t dvk_pem_size);
+
 #if defined(__cplusplus) && __cplusplus
 };
 #endif

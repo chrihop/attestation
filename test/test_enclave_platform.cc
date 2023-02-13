@@ -225,6 +225,21 @@ static pair<size_t, size_t>
     return {0, 0};
 }
 
+static pair<uintptr_t, size_t>
+    get_section(const elfio & reader, string & name)
+{
+    Elf_Half sects = reader.sections.size();
+    for (int i = 0; i < sects; i++)
+    {
+        section * s = reader.sections[i];
+        if (s->get_name() == name)
+        {
+            return {s->get_offset(), s->get_size()};
+        }
+    }
+    return {0, 0};
+}
+
 template<typename T> inline T
 round_up(T a, T n)
 {
@@ -471,3 +486,93 @@ TEST_F(EnclavePlatformTest, secure_loader_elf_file)
     );
     ASSERT_EQ(err, ERR_OK);
 }
+
+TEST_F(EnclavePlatformTest, secure_loader_elf_trust)
+{
+    elfio       reader;
+
+    bool        rv;
+    const char* path = "sample_enclave_user.signed";
+    rv               = reader.load(path);
+    ASSERT_TRUE(rv);
+
+    enclave_node_t* node = enclave_node_at(0);
+
+    section*        s_slots = find_section(".enclave.trust", reader);
+    ASSERT_NE(s_slots, nullptr);
+
+    section* s_slots_sig = find_section(".enclave.trust_sig", reader);
+    ASSERT_NE(s_slots_sig, nullptr);
+
+    section* s_dvk = find_section(".enclave.public_key", reader);
+    ASSERT_NE(s_dvk, nullptr);
+
+    err_t err = enclave_node_trust_slots_verify(node,
+        (const uint8_t*)s_slots->get_data(),
+        (const uint8_t*)s_slots_sig->get_data(),
+        (const uint8_t*)s_dvk->get_data(), s_dvk->get_size());
+    ASSERT_EQ(err, ERR_OK);
+}
+
+TEST_F(EnclavePlatformTest, secure_loader_memory_leak)
+{
+#if defined (MBEDTLS_MEMORY_DEBUG)
+    size_t used_before, blocks_before, used_after, blocks_after;
+    mbedtls_memory_buffer_alloc_cur_get(&used_before, &blocks_before);
+#endif
+
+    elfio           reader;
+
+    bool            rv;
+    const char*     path   = "sample_enclave_user.signed";
+    vector<uint8_t> binary = load_file(path);
+    rv                     = reader.load(path);
+    ASSERT_TRUE(rv);
+
+    enclave_node_t* node = enclave_node_at(0);
+
+    section* s_dvk = find_section(".enclave.public_key", reader);
+    ASSERT_NE(s_dvk, nullptr);
+    section* s_dvk_sig = find_section(".enclave.pubkey_sig", reader);
+    ASSERT_NE(s_dvk_sig, nullptr);
+    ASSERT_EQ(s_dvk_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
+    section* s_sig = find_section(".enclave.binary_sig", reader);
+    ASSERT_NE(s_sig, nullptr);
+    ASSERT_EQ(s_sig->get_size(), CRYPTO_DS_SIGNATURE_SIZE);
+
+    vector<uint8_t> dvk(CRYPTO_DS_PUBKEY_SIZE);
+
+    err_t err;
+    enclave_node_load_start(node);
+    load_segments(reader, binary, node);
+    err = enclave_node_load_verify(
+        node,
+        (const uint8_t*)s_sig->get_data(),
+        (const uint8_t*)s_dvk_sig->get_data(),
+        (const uint8_t*)s_dvk->get_data(), s_dvk->get_size());
+    ASSERT_EQ(err, ERR_OK);
+
+    section*        s_slots = find_section(".enclave.trust", reader);
+    ASSERT_NE(s_slots, nullptr);
+
+    section* s_slots_sig = find_section(".enclave.trust_sig", reader);
+    ASSERT_NE(s_slots_sig, nullptr);
+
+    err = enclave_node_trust_slots_verify(node,
+        (const uint8_t*)s_slots->get_data(),
+        (const uint8_t*)s_slots_sig->get_data(),
+        (const uint8_t*)s_dvk->get_data(), s_dvk->get_size());
+    ASSERT_EQ(err, ERR_OK);
+
+#if defined (MBEDTLS_MEMORY_DEBUG)
+    mbedtls_memory_buffer_alloc_cur_get(&used_after, &blocks_after);
+    ASSERT_EQ(used_before, used_after);
+    ASSERT_EQ(blocks_before, blocks_after);
+#endif
+}
+
+
+
+
+
+

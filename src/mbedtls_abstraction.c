@@ -593,7 +593,7 @@ void crypto_ds_sign(in const crypto_ds_context_t * ctx, in uint8_t * msg, in siz
     crypto_assert(olen == CRYPTO_DS_SIGNATURE_SIZE);
 }
 
-err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, in uint8_t * msg, in size_t msg_len,
+err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, const in uint8_t * msg, in size_t msg_len,
     const in uint8_t * signature)
 {
     crypto_assert(ctx != NULL);

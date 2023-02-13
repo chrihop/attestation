@@ -20,6 +20,9 @@ import utils
 verbose = 1
 hash_algorithm = hashlib.sha256
 signature_algorithm = ecdsa.curves.SECP256k1
+max_trust_slots = 4
+signature_size = 64
+digest_size = hash_algorithm().digest_size
 PAGE_SIZE = 4096
 
 
@@ -34,10 +37,6 @@ def round_up(num, divisor):
 def get_segment_info(p: Segment, *idents):
     v = (p.header[e] for e in idents)
     return v
-
-
-def hexstr(s):
-    return ''.join(f'{b:02x}' for b in s)
 
 
 def get_segment_file_offset(n):
@@ -309,10 +308,10 @@ class CommandElfSkeleton(GenericCommand):
         f_trust_sig = f'{self.args.elf}.trust.sig'
         # create empty files
         create_empty_file(f_pk, pk_size)
-        create_empty_file(f_sig_pk, 64)
-        create_empty_file(f_sig_bin, 64)
-        create_empty_file(f_trust, 32 * 4)
-        create_empty_file(f_trust_sig, 64)
+        create_empty_file(f_sig_pk, signature_size)
+        create_empty_file(f_sig_bin, signature_size)
+        create_empty_file(f_trust, max_trust_slots * digest_size)
+        create_empty_file(f_trust_sig, signature_size)
         # add sections
         flg = 'noload,readonly'
         ELF.add_section(objcopy, '.enclave.public_key', f_pk, flg, elf_in, elf_out)
@@ -401,7 +400,7 @@ class CommandTrust(CommandElfSkeleton):
             return yaml.safe_load(f)
 
     def generate_trust_fragments(self, trust: list[str], sk):
-        slots = bytearray(32 * 4)
+        slots = bytearray(max_trust_slots * digest_size)
         for i, t in enumerate(trust):
             slots[i * 32: (i + 1) * 32] = bytes.fromhex(t)
         sig = sk.sign(slots, hashfunc=hashlib.sha256)
