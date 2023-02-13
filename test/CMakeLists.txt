@@ -108,6 +108,7 @@ gtest_discover_tests(test_psa_kd)
 gtest_discover_tests(test_psa_hash)
 gtest_discover_tests(test_mbedtls_abstraction)
 gtest_discover_tests(test_enclave_platform_loader)
+gtest_discover_tests(test_enclave_platform_attestation)
 # --
 
 #
