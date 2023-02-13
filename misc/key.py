@@ -3,10 +3,12 @@
 import argparse
 import base64
 import hashlib
+import yaml
 import json
 import os
 from abc import abstractmethod
 from enum import Enum
+from typing import Optional
 
 import ecdsa
 from elftools.elf.elffile import ELFFile
@@ -62,6 +64,13 @@ class ELF:
     def load(self):
         f = open(self.path, 'rb')
         self.elf = ELFFile(f)
+        return self
+
+    def find_section(self, name: str):
+        for s in self.elf.iter_sections():
+            if s.name == name:
+                return s
+        return None
 
     def find_bss(self):
         for s in self.elf.iter_sections():
@@ -146,6 +155,10 @@ class ELF:
     def add_section(objcopy, sec_name, sec_file, sec_flags, in_file, out_file):
         utils.Run.run(f'{objcopy} --add-section {sec_name}={sec_file} ' +
                       f'--set-section-flags {sec_name}={sec_flags} {in_file} {out_file}')
+
+    @staticmethod
+    def update_section(objcopy, sec_name, sec_file, in_file, out_file):
+        utils.Run.run(f'{objcopy} --update-section {sec_name}={sec_file} {in_file} {out_file}')
 
     def close(self):
         self.elf.stream.close()
@@ -277,12 +290,46 @@ class CommandValidate(GenericCommand):
 
 
 def create_empty_file(path: str, size: int):
-    with open(path) as f:
+    with open(path, 'wb+') as f:
         f.seek(size - 1)
-        f.write('\0')
+        f.write(b'\0')
 
 
-class CommandSign(GenericCommand):
+class CommandElfSkeleton(GenericCommand):
+    def __init__(self, args):
+        super().__init__(args)
+        self.prepared = f'{self.args.elf}.prepared'
+
+    def prepare_elf_structure(self, elf_in: str, elf_out: str, pk_size: int):
+        objcopy = f'{self.args.binutils}objcopy'
+        f_pk = f'{self.args.elf}.pk.pem'
+        f_sig_pk = f'{self.args.elf}.sig_pk.sig'
+        f_sig_bin = f'{self.args.elf}.sig_bin.sig'
+        f_trust = f'{self.args.elf}.trust'
+        f_trust_sig = f'{self.args.elf}.trust.sig'
+        # create empty files
+        create_empty_file(f_pk, pk_size)
+        create_empty_file(f_sig_pk, 64)
+        create_empty_file(f_sig_bin, 64)
+        create_empty_file(f_trust, 32 * 4)
+        create_empty_file(f_trust_sig, 64)
+        # add sections
+        flg = 'noload,readonly'
+        ELF.add_section(objcopy, '.enclave.public_key', f_pk, flg, elf_in, elf_out)
+        ELF.add_section(objcopy, '.enclave.pubkey_sig', f_sig_pk, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.binary_sig', f_sig_bin, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.trust', f_trust, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.trust_sig', f_trust_sig, flg, elf_out, elf_out)
+
+    def execute(self):
+        sk, _ = load_pem(self.args.keypair)
+        pk, sig_pk = load_cert(self.args.cert)
+        # update elf file header
+        pk_bin = pk.to_pem().decode('ascii') + '\0'
+        self.prepare_elf_structure(self.args.elf, self.prepared, len(pk_bin))
+
+
+class CommandSign(CommandElfSkeleton):
     def generate_sign_fragments(
             self, pk: ecdsa.VerifyingKey, sig_pk: bytes, sig_bin: bytes):
         f_pk = f'{self.args.elf}.pk.pem'
@@ -298,48 +345,22 @@ class CommandSign(GenericCommand):
         return f_pk, f_sig_pk, f_sig_bin
 
     def update_elf_sections(self, elf_in, elf_out, f_pk, f_sig_pk, f_sig_bin):
-        tmp_elf = f'{elf_in}.tmp'
         objcopy = f'{self.args.binutils}objcopy'
-        ELF.add_section(objcopy, '.enclave.public_key', f_pk, 'noload,readonly',
-                        elf_in, tmp_elf)
-        ELF.add_section(objcopy, '.enclave.pubkey_sig', f_sig_pk,
-                        'noload,readonly', tmp_elf, tmp_elf)
-        ELF.add_section(objcopy, '.enclave.binary_sig', f_sig_bin,
-                        'noload,readonly', tmp_elf, elf_out)
-        utils.Run.rm(tmp_elf)
-
-
-    def prepare_elf_structure(self, elf_in: str, elf_out: str, pk_size: int):
-        objcopy = f'{self.args.binutils}objcopy'
-        f_pk = f'{self.args.elf}.pk.pem'
-        f_sig_pk = f'{self.args.elf}.sig_pk.sig'
-        f_sig_bin = f'{self.args.elf}.sig_bin.sig'
-        f_trust = f'{self.args.elf}.trust'
-        f_trust_sig = f'{self.args.elf}.trust.sig'
-
-        create_empty_file(f_pk, pk_size)
-        create_empty_file(f_sig_pk, 64)
-        create_empty_file(f_sig_bin, 64)
-        create_empty_file(f_trust, 32 * 4)
-        create_empty_file(f_trust_sig, 64)
-
-        flg = 'noload,readonly'
-        ELF.add_section(objcopy, '.enclave.public_key', f_pk, flg, elf_in, elf_out)
-        ELF.add_section(objcopy, '.enclave.pubkey_sig', f_sig_pk, flg, elf_out, elf_out)
-        ELF.add_section(objcopy, '.enclave.binary_sig', f_sig_bin, flg, elf_out, elf_out)
-        ELF.add_section(objcopy, '.enclave.trust', f_trust, flg, elf_out, elf_out)
-        ELF.add_section(objcopy, '.enclave.trust_sig', f_trust_sig, flg, elf_out, elf_out)
+        ELF.update_section(objcopy, '.enclave.public_key', f_pk, elf_in, elf_out)
+        ELF.update_section(objcopy, '.enclave.pubkey_sig', f_sig_pk, elf_out, elf_out)
+        ELF.update_section(objcopy, '.enclave.binary_sig', f_sig_bin, elf_out, elf_out)
 
     def execute(self):
+        elf = ELF(self.args.elf).load()
+        if elf.find_section('.enclave.public_key') is None:
+            super().execute()
+        else:
+            self.prepared = self.args.elf
+
         sk, _ = load_pem(self.args.keypair)
         pk, sig_pk = load_cert(self.args.cert)
-        # update elf file header
-        pk_bin = pk.to_pem().decode('ascii') + '\0'
-        msr_elf = f'{self.args.elf}.measure'
-        self.prepare_elf_structure(self.args.elf, msr_elf, len(pk_bin))
         # measure elf
-        elf = ELF(msr_elf)
-        elf.load()
+        elf = ELF(self.prepared).load()
         h = elf.sha256sum().digest()
         sig_bin = sk.sign(h, hashfunc=hashlib.sha256)
         global verbose
@@ -349,16 +370,14 @@ class CommandSign(GenericCommand):
             print(f'binary signature ({len(sig_bin)}B): \n {sig_bin.hex()} \n')
             print(f'pubkey signature ({len(sig_pk)}B): \n {sig_pk.hex()} \n')
         # attach the signatures
-        f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(
-            pk, sig_pk, sig_bin)
-        self.update_elf_sections(self.args.elf, self.args.out_file, f_pk,
-                                 f_sig_pk, f_sig_bin)
+        self.update_elf_sections(
+            self.prepared, self.args.out_file,
+            *self.generate_sign_fragments(pk, sig_pk, sig_bin))
 
 
 class CommandHash(GenericCommand):
     def execute(self):
-        elf = ELF(self.args.elf)
-        elf.load()
+        elf = ELF(self.args.elf).load()
         h = elf.sha256sum().digest()
         with open(self.args.out_file, 'w+') as f:
             f.write(h.hex())
@@ -374,6 +393,52 @@ class CommandFingerprint(GenericCommand):
         b = pk.to_string()
         h = hashlib.md5(b).digest()
         print(':'.join(f'{x:02x}' for x in h))
+
+
+class CommandTrust(CommandElfSkeleton):
+    def load_trust_config(self, f_trust):
+        with open(f_trust, 'r') as f:
+            return yaml.safe_load(f)
+
+    def generate_trust_fragments(self, trust: list[str], sk):
+        slots = bytearray(32 * 4)
+        for i, t in enumerate(trust):
+            slots[i * 32: (i + 1) * 32] = bytes.fromhex(t)
+        sig = sk.sign(slots, hashfunc=hashlib.sha256)
+        if verbose >= 1:
+            print(f'trust signature ({len(sig)}B): \n {sig.hex()} \n')
+        f_trust = f'{self.args.elf}.trust'
+        f_trust_sig = f'{self.args.elf}.trust_sig'
+        with open(f_trust, 'wb+') as f:
+            f.write(slots)
+        with open(f_trust_sig, 'wb+') as f:
+            f.write(sig)
+        return f_trust, f_trust_sig
+
+    def update_elf_sections(self, elf_in, elf_out, f_trust, f_trust_sig):
+        objcopy = f'{self.args.binutils}objcopy'
+        ELF.update_section(objcopy, '.enclave.trust', f_trust, elf_in, elf_out)
+        ELF.update_section(objcopy, '.enclave.trust_sig', f_trust_sig, elf_out, elf_out)
+
+    def execute(self):
+        elf = ELF(self.args.elf).load()
+        if elf.find_section('.enclave.trust') is None:
+            super().execute()
+        else:
+            self.prepared = self.args.elf
+        sk, _ = load_pem(self.args.keypair)
+        # load trust config
+        trust = self.load_trust_config(self.args.trust)['trust-remote']
+        global verbose
+        if verbose >= 1:
+            for i, t in enumerate(trust):
+                print(f'trust [{i}] = {t}')
+        # generate trust fragments
+        f_trust, f_trust_sig = self.generate_trust_fragments(trust, sk)
+        # attach the signatures
+        self.update_elf_sections(
+            self.prepared, self.args.out_file,
+            f_trust, f_trust_sig)
 
 
 class KeyCommand(Enum):
@@ -396,6 +461,10 @@ class KeyCommand(Enum):
         "sign --out <out_elf> --keypair <pem> --cert <cert> --elf <in_elf> --binutils <prefix_of_binutils>",
         "sign and attach the signatures of the measurement to the elf binary",
         CommandSign)
+    trust = (
+        "trust --out <out_elf> --keypair <pem> --cert <cert> --config <trust_config> --elf <in_elf> --binutils <prefix_of_binutils>",
+        "sign and attach the remote trusted entities to the elf binary",
+        CommandTrust)
     hash = ("hash --out <hash> --elf <in_elf>",
             "measure the elf and save the hash",
             CommandHash)
@@ -439,6 +508,9 @@ class Main:
         parser.add_argument('-r', '--cert', dest='cert', type=utils.file_path,
                             action='store', required=False,
                             help='input certificate')
+        parser.add_argument('-t', '--trust', dest='trust', type=utils.file_path,
+                            action='store', required=False,
+                            help='input trust config [yaml]')
         parser.add_argument('-e', '--elf', dest='elf', type=utils.file_path,
                             action='store', required=False,
                             help='input elf binary')
@@ -467,6 +539,9 @@ class Main:
             utils.check_args(args, 'out_file', 'elf')
         elif cmd == KeyCommand.validate.name:
             utils.check_args(args, 'keypair', 'cert')
+        elif cmd == KeyCommand.trust.name:
+            utils.check_args(args, 'out_file', 'keypair', 'cert', 'trust', 'elf',
+                             'binutils')
 
         # run command
         c = KeyCommand[cmd].command()(args)

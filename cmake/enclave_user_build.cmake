@@ -21,6 +21,7 @@ target_link_libraries(sample_enclave_user
 
 set (ROOT_KEY                 ${ATTESTATION_TEST_DIR}/root_key.pem)
 set (DEVELOPER_KEY            ${ATTESTATION_TEST_DIR}/developer_key.pem)
+set (DEVELOPER_TRUST          ${ATTESTATION_TEST_DIR}/sample_enclave_user.trust.yaml)
 set (DEVELOPER_IDENT          ${ATTESTATION_BUILD_DIR}/developer_id.pem)
 set (DEVELOPER_CERT           ${ATTESTATION_BUILD_DIR}/developer_cert.json)
 
@@ -50,11 +51,18 @@ find_path(BINUTILS
 
 add_custom_command(
     OUTPUT ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
+    COMMAND ${PYTHON} ${ATTESTATION_MISC_DIR}/key.py --command trust
+        --out ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.trust.signed
+        --keypair ${DEVELOPER_KEY}
+        --trust ${DEVELOPER_TRUST}
+        --cert ${DEVELOPER_CERT}
+        --elf ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user
+        --binutils ${BINUTILS}/
     COMMAND ${PYTHON} ${ATTESTATION_MISC_DIR}/key.py --command sign
         --out ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
         --keypair ${DEVELOPER_KEY}
         --cert ${DEVELOPER_CERT}
-        --elf ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user
+        --elf ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.trust.signed
         --binutils ${BINUTILS}/
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         ${ATTESTATION_BUILD_DIR}/test/sample_enclave_user.signed
