@@ -1,0 +1,5 @@
+---
+# at most 4 trusted remote enclaves, sha-256 in hex string format
+trust-remote:
+  - 0db540f2033ad8a8298b8ab51f839ebed4e8353508dcab89347360ccf4be129b # enclave 1
+  - 740d3273178a666b1f9e1c8acba6e0d81dd5e3d6f15aba9b71070b243df75c99 # enclave 2

@@ -16,6 +16,9 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import utils
 
 verbose = 1
+hash_algorithm = hashlib.sha256
+signature_algorithm = ecdsa.curves.SECP256k1
+PAGE_SIZE = 4096
 
 
 def round_down(num, divisor):
@@ -52,8 +55,6 @@ def get_segment_vaddr_size(n):
 
 
 class ELF:
-    PAGE_SIZE = 4096
-
     def __init__(self, path):
         self.path = path
         self.elf: ELFFile = None
@@ -68,17 +69,17 @@ class ELF:
                 return s.header['sh_addr'], s.header['sh_size']
 
     def load_page(self, fa, va, length):
-        page = bytearray(ELF.PAGE_SIZE)
+        page = bytearray(PAGE_SIZE)
         self.elf.stream.seek(fa)
         ld = self.elf.stream.read(length)
         assert len(ld) == length
-        va_off = va % ELF.PAGE_SIZE
+        va_off = va % PAGE_SIZE
         page[va_off: va_off + length] = ld
         return page
 
     def dump_page(self, page, va):
-        print(f'-- {ELF.PAGE_SIZE} B --')
-        for g16 in range(0, ELF.PAGE_SIZE // 16):
+        print(f'-- {PAGE_SIZE} B --')
+        for g16 in range(0, PAGE_SIZE // 16):
             s16 = g16 * 16
             addr_line = f'{va + s16:08x}: '
             g16_list = []
@@ -104,7 +105,7 @@ class ELF:
                 fa, va, fz, vz = get_segment_info(
                     p, 'p_offset', 'p_vaddr', 'p_filesz', 'p_memsz')
                 zva = va + fz
-                eva = round_up(va + vz, ELF.PAGE_SIZE)
+                eva = round_up(va + vz, PAGE_SIZE)
                 length = 0
                 increment = 0
                 while va < zva:
@@ -112,32 +113,32 @@ class ELF:
                     fa += increment
                     if va >= eva:
                         break
-                    if bss_va <= va and va + ELF.PAGE_SIZE <= bss_va + bss_sz:
-                        increment = ELF.PAGE_SIZE
+                    if bss_va <= va and va + PAGE_SIZE <= bss_va + bss_sz:
+                        increment = PAGE_SIZE
                         continue
-                    if va % ELF.PAGE_SIZE != 0:
-                        length = min(ELF.PAGE_SIZE - va % ELF.PAGE_SIZE,
+                    if va % PAGE_SIZE != 0:
+                        length = min(PAGE_SIZE - va % PAGE_SIZE,
                                      zva - va)
                         page = self.load_page(fa, va, length)
                         # update the incremental length to be page aligned
-                        increment = ELF.PAGE_SIZE - va % ELF.PAGE_SIZE
-                    elif va < round_down(zva, ELF.PAGE_SIZE):
-                        length = ELF.PAGE_SIZE
+                        increment = PAGE_SIZE - va % PAGE_SIZE
+                    elif va < round_down(zva, PAGE_SIZE):
+                        length = PAGE_SIZE
                         page = self.load_page(fa, va, length)
-                        increment = ELF.PAGE_SIZE
+                        increment = PAGE_SIZE
                     elif va < zva and fz > 0:
                         length = zva - va
                         page = self.load_page(fa, va, length)
-                        increment = ELF.PAGE_SIZE
+                        increment = PAGE_SIZE
                     else:
-                        increment = ELF.PAGE_SIZE
-                        page = bytearray(ELF.PAGE_SIZE)
+                        increment = PAGE_SIZE
+                        page = bytearray(PAGE_SIZE)
                     global verbose
                     if verbose >= 2:
                         print(
-                            f'{va:08x} {length:08x}: {hashlib.sha256(page).hexdigest()}')
+                            f'{va:08x} {length:08x}: {hash_algorithm(page).hexdigest()}')
                     if verbose >= 3:
-                        self.dump_page(page, round_down(va, ELF.PAGE_SIZE))
+                        self.dump_page(page, round_down(va, PAGE_SIZE))
                     m.update(page)
         return m
 
@@ -159,6 +160,7 @@ def load_pem(pem_path, pk=False):
                     k = ecdsa.VerifyingKey.from_pem(pem)
                 else:
                     k = ecdsa.SigningKey.from_pem(pem)
+                assert k.curve == signature_algorithm
                 return k, pem
             except OSError as e:
                 utils.Msg.panic(
@@ -186,22 +188,23 @@ def load_cert(cert_path):
                 f'Error when read {cert_path}: {e}. corrupted file!')
 
 
+def load_pem_auto(pem_path):
+    pk = False
+    with open(pem_path, 'r+') as f:
+        pem = f.read()
+        if pem.startswith('-----BEGIN PUBLIC KEY-----'):
+            pk = True
+        else:
+            pk = False
+    return load_pem(pem_path, pk)
+
+
 class GenericCommand:
     ID_PUBLIC_KEY = "public_key"
     ID_SIGNATURE = "signature"
 
     def __init__(self, args: argparse.Namespace):
         self.args = args
-
-    def load_pem_auto(self, pem_path):
-        pk = False
-        with open(pem_path, 'r+') as f:
-            pem = f.read()
-            if pem.startswith('-----BEGIN PUBLIC KEY-----'):
-                pk = True
-            else:
-                pk = False
-        return load_pem(pem_path, pk)
 
     @abstractmethod
     def execute(self):
@@ -210,8 +213,8 @@ class GenericCommand:
 
 class CommandNew(GenericCommand):
     def execute(self):
-        sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1,
-                                       hashfunc=hashlib.sha256)
+        sk = ecdsa.SigningKey.generate(
+            curve=signature_algorithm, hashfunc=hash_algorithm)
         pem = sk.to_pem().decode('ascii')
         with open(self.args.out_file, 'w+') as f:
             f.write(pem)
@@ -273,13 +276,15 @@ class CommandValidate(GenericCommand):
             exit(1)
 
 
+def create_empty_file(path: str, size: int):
+    with open(path) as f:
+        f.seek(size - 1)
+        f.write('\0')
+
+
 class CommandSign(GenericCommand):
-
-    def measure_elf(self):
-        pass
-
-    def generate_sign_fragments(self, pk: ecdsa.VerifyingKey, sig_pk: bytes,
-                                sig_bin: bytes):
+    def generate_sign_fragments(
+            self, pk: ecdsa.VerifyingKey, sig_pk: bytes, sig_bin: bytes):
         f_pk = f'{self.args.elf}.pk.pem'
         f_sig_pk = f'{self.args.elf}.sig_pk.sig'
         f_sig_bin = f'{self.args.elf}.sig_bin.sig'
@@ -303,35 +308,49 @@ class CommandSign(GenericCommand):
                         'noload,readonly', tmp_elf, elf_out)
         utils.Run.rm(tmp_elf)
 
+
+    def prepare_elf_structure(self, elf_in: str, elf_out: str, pk_size: int):
+        objcopy = f'{self.args.binutils}objcopy'
+        f_pk = f'{self.args.elf}.pk.pem'
+        f_sig_pk = f'{self.args.elf}.sig_pk.sig'
+        f_sig_bin = f'{self.args.elf}.sig_bin.sig'
+        f_trust = f'{self.args.elf}.trust'
+        f_trust_sig = f'{self.args.elf}.trust.sig'
+
+        create_empty_file(f_pk, pk_size)
+        create_empty_file(f_sig_pk, 64)
+        create_empty_file(f_sig_bin, 64)
+        create_empty_file(f_trust, 32 * 4)
+        create_empty_file(f_trust_sig, 64)
+
+        flg = 'noload,readonly'
+        ELF.add_section(objcopy, '.enclave.public_key', f_pk, flg, elf_in, elf_out)
+        ELF.add_section(objcopy, '.enclave.pubkey_sig', f_sig_pk, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.binary_sig', f_sig_bin, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.trust', f_trust, flg, elf_out, elf_out)
+        ELF.add_section(objcopy, '.enclave.trust_sig', f_trust_sig, flg, elf_out, elf_out)
+
     def execute(self):
         sk, _ = load_pem(self.args.keypair)
         pk, sig_pk = load_cert(self.args.cert)
         # update elf file header
-        fake_sig_bin = sk.sign(b'elf', hashfunc=hashlib.sha256)
-        assert (len(fake_sig_bin) == 64)
+        pk_bin = pk.to_pem().decode('ascii') + '\0'
         msr_elf = f'{self.args.elf}.measure'
-        f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(pk, sig_pk,
-                                                                 fake_sig_bin)
-        self.update_elf_sections(self.args.elf, msr_elf, f_pk, f_sig_pk,
-                                 f_sig_bin)
+        self.prepare_elf_structure(self.args.elf, msr_elf, len(pk_bin))
         # measure elf
         elf = ELF(msr_elf)
         elf.load()
         h = elf.sha256sum().digest()
+        sig_bin = sk.sign(h, hashfunc=hashlib.sha256)
         global verbose
         if verbose >= 1:
-            print(f' binary digest({len(h)}): ' + ''.join(
-                [f'{x:02x}' for x in h]))
-        sig_bin = sk.sign(h, hashfunc=hashlib.sha256)
-        if verbose >= 1:
-            print(
-                f'verifying key ({len(pk.to_pem())}B): \n {pk.to_pem().decode("ascii")} \n')
-            print(
-                f'binary signature ({len(sig_bin)}B): \n {hexstr(sig_bin)} \n')
-            print(f'pubkey signature ({len(sig_pk)}B): \n {hexstr(sig_pk)} \n')
+            print(f'binary hash ({len(h)}B): \n {h.hex()} \n')
+            print(f'verifying key ({len(pk.to_pem())}B): \n {pk.to_pem().decode("ascii")} \n')
+            print(f'binary signature ({len(sig_bin)}B): \n {sig_bin.hex()} \n')
+            print(f'pubkey signature ({len(sig_pk)}B): \n {sig_pk.hex()} \n')
         # attach the signatures
-        f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(pk, sig_pk,
-                                                                 sig_bin)
+        f_pk, f_sig_pk, f_sig_bin = self.generate_sign_fragments(
+            pk, sig_pk, sig_bin)
         self.update_elf_sections(self.args.elf, self.args.out_file, f_pk,
                                  f_sig_pk, f_sig_bin)
 
@@ -342,12 +361,12 @@ class CommandHash(GenericCommand):
         elf.load()
         h = elf.sha256sum().digest()
         with open(self.args.out_file, 'w+') as f:
-            f.write(base64.b64encode(h).decode('ascii'))
+            f.write(h.hex())
 
 
 class CommandFingerprint(GenericCommand):
     def execute(self):
-        k, _ = self.load_pem_auto(self.args.keypair)
+        k, _ = load_pem_auto(self.args.keypair)
         if k is ecdsa.keys.SigningKey:
             pk = k.verifying_key
         else:

@@ -234,7 +234,7 @@ TEST_F(MBedTlsAbstraction, aead_cipher_key)
 
 TEST_F(MBedTlsAbstraction, key_exchange)
 {
-    crypto_dh_context_t A = {.step = CRYPTO_DH_NOT_STARTED}, B = {.step = CRYPTO_DH_NOT_STARTED};
+    crypto_dh_context_t A = CRYPTO_DH_CONTEXT_INIT, B = CRYPTO_DH_CONTEXT_INIT;
     vector<uint8_t> A_pub(CRYPTO_DH_PUBKEY_SIZE), B_pub(CRYPTO_DH_PUBKEY_SIZE);
     std::printf("public key size: %zu B\n", A_pub.size());
 
@@ -247,7 +247,7 @@ TEST_F(MBedTlsAbstraction, key_exchange)
     crypto_dh_exchange_propose(&B, A_pub.data(), B_pub.data());
     crypto_dh_exchange(&A, B_pub.data());
 
-    crypto_aead_context_t enc, dec;
+    crypto_aead_context_t enc = CRYPTO_AEAD_CONTEXT_INIT, dec = CRYPTO_AEAD_CONTEXT_INIT;
     crypto_dh_derive_aead(&A, &enc);
     crypto_dh_derive_aead(&B, &dec);
 
