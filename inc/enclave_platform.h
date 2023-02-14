@@ -68,8 +68,29 @@ err_t enclave_node_load_verify(enclave_node_t* node, const uint8_t* sig,
 err_t enclave_node_trust_slots_verify(enclave_node_t* node, const uint8_t* slots,
     const uint8_t* slots_sig, const uint8_t* dvk_pem, size_t dvk_pem_size);
 
+/**
+ * Attestation Facilities
+ *
+ * \verbatim
+ * (1)propose()->[challenge]
+ *
+ *     +----+
+ *     |    |
+ *     |  +-v-+   (2)send[chall.]  +---+
+ *     +--+ A |<------------------>| B |
+ *        +---+   (5)recv[report]  ++--+
+ *                                  | ^
+ * (6)verify(challenge)             | |
+ *                       (3)report()| |   (4)signed
+ *                                  v |     [report]
+ *                          +---------+--------+
+ *                          | Enclave Platform |
+ *                          +------------------+
+ * \endverbatim
+ */
 typedef struct enclave_node_report_body_t
 {
+    uint32_t id, par;
     uint8_t  dh[CRYPTO_DH_PUBKEY_SIZE];
     uint8_t  hash[CRYPTO_HASH_SIZE];
     uint8_t  session_pubkey[CRYPTO_DS_PUBKEY_SIZE];
@@ -93,6 +114,83 @@ struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report);
 err_t
 enclave_report_verify(const enclave_node_report_t* report, const uint8_t * hash,
 const uint8_t* rvk_pem, size_t rvk_pem_size);
+
+static inline void
+enclave_node_report_by_node(uint32_t node_id, const uint8_t* dh, enclave_node_report_t* report)
+{
+    crypto_assert(node_id < MAX_ENCLAVES);
+    enclave_node_t * node = enclave_node_at(node_id);
+
+    enclave_node_report(node, dh, report);
+}
+
+/**
+ * Remote Attestation
+ */
+enum enclave_remote_attestation_step_t
+{
+    ERA_STEP_INIT,
+    ERA_STEP_CHALLENGE,
+    ERA_STEP_FINISH,
+    ERA_STEP_FAILED
+};
+
+typedef struct enclave_remote_attestation_context_t
+{
+    enum enclave_remote_attestation_step_t step;
+    crypto_dh_context_t dh;
+    uint32_t peer_node, peer_par;
+} enclave_remote_attestation_context_t;
+
+#define ENCLAVE_REMOTE_ATTESTATION_CONTEXT_INIT \
+    {                                           \
+        .step = ERA_STEP_INIT,                  \
+        .dh = CRYPTO_DH_CONTEXT_INIT            \
+    }
+
+typedef struct enclave_remote_attestation_challenge_t
+{
+    uint32_t node, par;
+    uint8_t dh[CRYPTO_DH_PUBKEY_SIZE];
+} __attribute__((packed)) enclave_remote_attestation_challenge_t;
+
+#define ENCLAVE_REMOTE_ATTESTATION_CHALLENGE_SIZE \
+    (sizeof(enclave_remote_attestation_challenge_t))
+
+/**
+ * Enclave communication endpoints
+ */
+typedef struct enclave_endpoint_context_t
+{
+    crypto_aead_context_t aead;
+    uint32_t peer_id, peer_par;
+} enclave_endpoint_context_t;
+
+#define ENCLAVE_ENDPOINT_CONTEXT_INIT \
+    {                                 \
+        .aead = CRYPTO_AEAD_CONTEXT_INIT, \
+    }
+
+
+void enclave_ra_free(enclave_remote_attestation_context_t* ctx);
+
+void enclave_ra_challenge(enclave_remote_attestation_context_t* ctx,
+    enclave_remote_attestation_challenge_t * challenge);
+
+err_t enclave_ra_verify(enclave_remote_attestation_context_t* ctx,
+    const uint8_t * remote_binary,
+    const uint8_t * remote_rvk_pem, size_t remote_rvk_pem_size,
+    const enclave_node_report_t * report);
+
+void enclave_ra_response(
+    uint32_t node_id,
+    const enclave_remote_attestation_challenge_t * challenge,
+    enclave_node_report_t * report,
+    enclave_endpoint_context_t * endpoint);
+
+void enclave_ra_derive_endpoint(enclave_remote_attestation_context_t* ctx,
+    enclave_endpoint_context_t* endpoint);
+
 
 #if defined(__cplusplus) && __cplusplus
 };

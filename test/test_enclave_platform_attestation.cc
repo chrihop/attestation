@@ -8,41 +8,8 @@
 #include <vector>
 using namespace std;
 
+#include "common.h"
 #include <enclave_platform.h>
-
-void _puthex(const char * name, const vector<unsigned char> & data)
-{
-    std::printf("%s (size %zu): ", name, data.size());
-    for (int i = 0; i < data.size(); i++)
-    {
-        std::printf("%02x", data[i]);
-    }
-    std::printf("\n");
-}
-
-void _puthex_n(const char * name, const vector<unsigned char> & data, size_t n)
-{
-    size_t k = std::min(n, data.size());
-    std::printf("%s (size %zu): ", name, k);
-    for (int i = 0; i < k; i++)
-    {
-        std::printf("%02x", data[i]);
-    }
-    std::printf("\n");
-}
-
-void _puthex_n(const char * name, const void * data, size_t n)
-{
-    std::printf("%s (size %zu): ", name, n);
-    for (int i = 0; i < n; i++)
-    {
-        std::printf("%02x", ((uint8_t *)data)[i]);
-    }
-    std::printf("\n");
-}
-
-#define puthex(var) _puthex(#var, var)
-#define puthex_n(var, n) _puthex_n(#var, var, n)
 
 class EnclavePlatformAttestationTest : public ::testing::Test
 {
@@ -106,4 +73,69 @@ TEST_F(EnclavePlatformAttestationTest, report)
         hash.data(),
         (const uint8_t*) remote_root_pubkey, remote_root_pubkey_len);
     EXPECT_EQ(err, ERR_OK);
+}
+
+TEST_F(EnclavePlatformAttestationTest, remote_attestation)
+{
+    // enclave client
+    vector<uint8_t> remote_binary(CRYPTO_HASH_SIZE);
+    enclave_endpoint_context_t client = ENCLAVE_ENDPOINT_CONTEXT_INIT;
+    vector<uint8_t> msg1(ENCLAVE_REMOTE_ATTESTATION_CHALLENGE_SIZE);
+
+    enclave_remote_attestation_context_t ctx = ENCLAVE_REMOTE_ATTESTATION_CONTEXT_INIT;
+    enclave_ra_challenge(&ctx, (enclave_remote_attestation_challenge_t *) msg1.data());
+    puthex(msg1);
+
+    // remote attestation server
+    enclave_node_t * node = enclave_node_create(0);
+    enclave_node_load_start(node);
+    for (auto & chunk : elf_file)
+    {
+        enclave_node_load_chunk(node, chunk.data(), chunk.size());
+    }
+
+    enclave_endpoint_context_t server = ENCLAVE_ENDPOINT_CONTEXT_INIT;
+    vector<uint8_t> msg2(ENCLAVE_NODE_REPORT_SIZE);
+    crypto_hash_report(&node->loader, node->hash);
+
+    // client already know
+    remote_binary.assign(node->hash, node->hash + CRYPTO_HASH_SIZE);
+    //
+
+    enclave_ra_response(node->node_id,
+        (const enclave_remote_attestation_challenge_t *) msg1.data(),
+        (enclave_node_report_t *) msg2.data(),
+        &server);
+    puthex(msg2);
+
+    // enclave client
+    err_t err;
+    err = enclave_ra_verify(&ctx,
+        remote_binary.data(),
+        (const uint8_t *) remote_root_pubkey, remote_root_pubkey_len,
+        (const enclave_node_report_t *) msg2.data());
+    EXPECT_EQ(err, ERR_OK);
+    enclave_ra_derive_endpoint(&ctx, &client);
+
+    // enclave server
+    string secrete = "Hello!";
+    vector<uint8_t> aad(16), nonce(CRYPTO_AEAD_NONCE_SIZE),
+        ciphertext(CRYPTO_AEAD_CIPHERTEXT_SIZE(secrete.size()));
+    crypto_aead_encrypt(&server.aead, aad.data(), aad.size(),
+        (const uint8_t *) secrete.data(), secrete.size(),
+        ciphertext.data(), nonce.data());
+    puthex(ciphertext);
+
+    // enclave client
+    vector<uint8_t> plaintext(CRYPTO_AEAD_PLAINTEXT_SIZE(ciphertext.size()));
+    err = crypto_aead_decrypt(&client.aead, aad.data(), aad.size(),
+        ciphertext.data(), ciphertext.size(),
+        nonce.data(), plaintext.data());
+    EXPECT_EQ(err, ERR_OK);
+    EXPECT_EQ(plaintext.size(), secrete.size());
+    EXPECT_EQ(0, memcmp(plaintext.data(), secrete.data(), secrete.size()));
+    puthex(plaintext);
+
+    string plaintext_str((char *) plaintext.data(), plaintext.size() + 1);
+    std::cout << plaintext_str << std::endl;
 }

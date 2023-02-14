@@ -457,7 +457,7 @@ void crypto_dh_propose(in_out crypto_dh_context_t * ctx, out uint8_t * pubkey)
     ctx->step = CRYPTO_DH_PROPOSED;
 }
 
-void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, in uint8_t * pubkey)
+void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == CRYPTO_DH_PROPOSED);
@@ -490,7 +490,7 @@ void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, in uint8_t * pubkey)
     ctx->step = CRYPTO_DH_EXCHANGED;
 }
 
-void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, in uint8_t * pubkey, out uint8_t * out_pubkey)
+void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey, out uint8_t * out_pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == CRYPTO_DH_NOT_STARTED);

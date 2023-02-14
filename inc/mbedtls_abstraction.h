@@ -130,7 +130,6 @@ err_t crypto_hash_verify(
 typedef struct crypto_aead_context_t
 {
     uint8_t has_key: 1;
-    uint8_t to_encrypt: 1;
     psa_key_handle_t key;
 } crypto_aead_context_t;
 
@@ -141,6 +140,14 @@ typedef struct crypto_aead_context_t
         PSA_KEY_TYPE_CHACHA20, \
         PSA_ALG_CHACHA20_POLY1305,                 \
         (plaintext_len))
+
+#define CRYPTO_AEAD_PLAINTEXT_SIZE(plaintext_len) \
+    PSA_AEAD_DECRYPT_OUTPUT_SIZE(                  \
+        PSA_KEY_TYPE_CHACHA20, \
+        PSA_ALG_CHACHA20_POLY1305,                 \
+        (plaintext_len))
+
+
 
 #define CRYPTO_AEAD_NONCE_SIZE \
     PSA_AEAD_NONCE_LENGTH(PSA_KEY_TYPE_CHACHA20, PSA_ALG_CHACHA20_POLY1305)
@@ -207,9 +214,9 @@ static const char crypto_dh_default_info[] = "symmetric key";
 
 void crypto_dh_propose(in_out crypto_dh_context_t * ctx, out uint8_t * pubkey);
 
-void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, in uint8_t * pubkey);
+void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey);
 
-void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, in uint8_t * pubkey, out uint8_t * out_pubkey);
+void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey, out uint8_t * out_pubkey);
 
 void crypto_dh_derive_aead(in_out crypto_dh_context_t * dh, out crypto_aead_context_t * aead);
 
