@@ -135,19 +135,15 @@ typedef struct crypto_aead_context_t
 
 #define CRYPTO_AEAD_CONTEXT_INIT  {.has_key = 0}
 
-#define CRYPTO_AEAD_CIPHERTEXT_SIZE(plaintext_len) \
-    PSA_AEAD_ENCRYPT_OUTPUT_SIZE(                  \
-        PSA_KEY_TYPE_CHACHA20, \
-        PSA_ALG_CHACHA20_POLY1305,                 \
+#define CRYPTO_AEAD_CIPHERTEXT_SIZE(plaintext_len)                             \
+    PSA_AEAD_ENCRYPT_OUTPUT_SIZE(PSA_KEY_TYPE_CHACHA20,                        \
+        PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),       \
         (plaintext_len))
 
-#define CRYPTO_AEAD_PLAINTEXT_SIZE(plaintext_len) \
-    PSA_AEAD_DECRYPT_OUTPUT_SIZE(                  \
-        PSA_KEY_TYPE_CHACHA20, \
-        PSA_ALG_CHACHA20_POLY1305,                 \
+#define CRYPTO_AEAD_PLAINTEXT_SIZE(plaintext_len)                              \
+    PSA_AEAD_DECRYPT_OUTPUT_SIZE(PSA_KEY_TYPE_CHACHA20,                        \
+        PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),       \
         (plaintext_len))
-
-
 
 #define CRYPTO_AEAD_NONCE_SIZE \
     PSA_AEAD_NONCE_LENGTH(PSA_KEY_TYPE_CHACHA20, PSA_ALG_CHACHA20_POLY1305)

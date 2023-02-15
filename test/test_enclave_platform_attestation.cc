@@ -64,12 +64,15 @@ TEST_F(EnclavePlatformAttestationTest, report)
 
     // in local attestation supervisor
     vector<uint8_t> report(ENCLAVE_NODE_REPORT_SIZE);
-    enclave_node_report(node, pubkey.data(), (enclave_node_report_t *) report.data());
+    vector<uint8_t> nonce(ENCLAVE_ATTESTATION_NONCE_SIZE);
+    std::iota(nonce.begin(), nonce.end(), 0);
+    enclave_node_report(node, nonce.data(), pubkey.data(), (enclave_node_report_t *) report.data());
     puthex(report);
 
     // in remote attestation server
     err_t err = enclave_report_verify(
         (const enclave_node_report_t *) report.data(),
+        nonce.data(),
         hash.data(),
         (const uint8_t*) remote_root_pubkey, remote_root_pubkey_len);
     EXPECT_EQ(err, ERR_OK);
@@ -121,6 +124,8 @@ TEST_F(EnclavePlatformAttestationTest, remote_attestation)
     string secrete = "Hello!";
     vector<uint8_t> aad(16), nonce(CRYPTO_AEAD_NONCE_SIZE),
         ciphertext(CRYPTO_AEAD_CIPHERTEXT_SIZE(secrete.size()));
+    ((size_t *) aad.data())[0] = 0;
+    ((size_t *) aad.data())[1] = 1;
     crypto_aead_encrypt(&server.aead, aad.data(), aad.size(),
         (const uint8_t *) secrete.data(), secrete.size(),
         ciphertext.data(), nonce.data());
@@ -133,9 +138,10 @@ TEST_F(EnclavePlatformAttestationTest, remote_attestation)
         nonce.data(), plaintext.data());
     EXPECT_EQ(err, ERR_OK);
     EXPECT_EQ(plaintext.size(), secrete.size());
-    EXPECT_EQ(0, memcmp(plaintext.data(), secrete.data(), secrete.size()));
     puthex(plaintext);
 
-    string plaintext_str((char *) plaintext.data(), plaintext.size() + 1);
+    EXPECT_EQ(0, memcmp(plaintext.data(), secrete.data(), secrete.size()));
+
+    string plaintext_str(plaintext.begin(), plaintext.end());
     std::cout << plaintext_str << std::endl;
 }

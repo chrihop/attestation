@@ -160,8 +160,8 @@ cleanup:
  */
 
 void
-enclave_node_report(
-struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report)
+enclave_node_report(struct enclave_node_t* node, const uint8_t* nonce,
+    const uint8_t* dh, enclave_node_report_t* report)
 {
     crypto_assert(node != NULL);
     crypto_assert(dh != NULL);
@@ -169,6 +169,14 @@ struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report)
 
     report->b.id = node->node_id;
     report->b.par = node->par_id;
+    if (nonce == NULL)
+    {
+        __builtin_memset(report->b.nonce, 0, ENCLAVE_ATTESTATION_NONCE_SIZE);
+    }
+    else
+    {
+        __builtin_memcpy(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+    }
     __builtin_memcpy(report->b.dh, dh, CRYPTO_DH_PUBKEY_SIZE);
     __builtin_memcpy(report->b.hash, node->hash, CRYPTO_HASH_SIZE);
     crypto_ds_export_pubkey(&epc.session.ds, report->b.session_pubkey);
@@ -177,8 +185,10 @@ struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report)
 }
 
 err_t
-enclave_report_verify(const enclave_node_report_t* report, const uint8_t * hash,
-    const uint8_t* rvk_pem, size_t rvk_pem_size)
+enclave_report_verify(const enclave_node_report_t* report,
+    const uint8_t * nonce,
+    const uint8_t * hash,
+    const uint8_t * rvk_pem, size_t rvk_pem_size)
 {
     crypto_assert(report != NULL);
     crypto_assert(rvk_pem != NULL);
@@ -208,6 +218,17 @@ enclave_report_verify(const enclave_node_report_t* report, const uint8_t * hash,
     int rv = __builtin_memcmp(report->b.hash, hash, CRYPTO_HASH_SIZE);
     err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
 
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    if (nonce != NULL)
+    {
+        rv = __builtin_memcmp(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+        err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
+    }
+
 cleanup:
     crypto_ds_free(&rds);
     crypto_ds_free(&sds);
@@ -234,6 +255,8 @@ void enclave_ra_challenge(enclave_remote_attestation_context_t* ctx,
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == ERA_STEP_INIT);
 
+    crypto_rng(ctx->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+    __builtin_memcpy(challenge->nonce, ctx->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
     crypto_dh_propose(&ctx->dh, challenge->dh);
     ctx->step = ERA_STEP_CHALLENGE;
 }
@@ -251,7 +274,7 @@ err_t enclave_ra_verify(enclave_remote_attestation_context_t* ctx,
 
     err_t err;
     err = enclave_report_verify(
-        report, remote_binary, remote_rvk_pem, remote_rvk_pem_size);
+        report, ctx->nonce, remote_binary, remote_rvk_pem, remote_rvk_pem_size);
     if (err != ERR_OK)
     {
         ctx->step = ERA_STEP_FAILED;
@@ -283,7 +306,7 @@ void enclave_ra_response(
 
     enclave_remote_attestation_context_t ctx = ENCLAVE_REMOTE_ATTESTATION_CONTEXT_INIT;
     crypto_dh_exchange_propose(&ctx.dh, challenge->dh, report->b.dh);
-    enclave_node_report_by_node(node_id, report->b.dh, report);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
 
     if (endpoint != NULL)
     {

@@ -27,17 +27,17 @@ if (BACKEND STREQUAL "mbedtls")
     )
 endif()
 
-add_library(enclave_platform
+add_library(enclave_common
     STATIC
-    enclave_platform.c
+    enclave_common.c
     )
 
-target_link_libraries(enclave_platform
+target_link_libraries(enclave_common
     PRIVATE
     crypto_abstract
     )
 
-add_dependencies(enclave_platform
+add_dependencies(enclave_common
     crypto_abstract
     )
 

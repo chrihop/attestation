@@ -88,9 +88,13 @@ err_t enclave_node_trust_slots_verify(enclave_node_t* node, const uint8_t* slots
  *                          +------------------+
  * \endverbatim
  */
+
+#define ENCLAVE_ATTESTATION_NONCE_SIZE     (12)
+
 typedef struct enclave_node_report_body_t
 {
     uint32_t id, par;
+    uint8_t  nonce[ENCLAVE_ATTESTATION_NONCE_SIZE];
     uint8_t  dh[CRYPTO_DH_PUBKEY_SIZE];
     uint8_t  hash[CRYPTO_HASH_SIZE];
     uint8_t  session_pubkey[CRYPTO_DS_PUBKEY_SIZE];
@@ -107,21 +111,20 @@ typedef struct enclave_node_report_t
 
 #define ENCLAVE_NODE_REPORT_SIZE   (sizeof(enclave_node_report_t))
 
-void
-enclave_node_report(
-struct enclave_node_t* node, const uint8_t* dh, enclave_node_report_t* report);
+void  enclave_node_report(struct enclave_node_t* node, const uint8_t* nonce,
+     const uint8_t* dh, enclave_node_report_t* report);
 
-err_t
-enclave_report_verify(const enclave_node_report_t* report, const uint8_t * hash,
-const uint8_t* rvk_pem, size_t rvk_pem_size);
+err_t enclave_report_verify(const enclave_node_report_t* report,
+    const uint8_t* nonce, const uint8_t* hash, const uint8_t* rvk_pem,
+    size_t rvk_pem_size);
 
 static inline void
-enclave_node_report_by_node(uint32_t node_id, const uint8_t* dh, enclave_node_report_t* report)
+enclave_node_report_by_node(uint32_t node_id, const uint8_t* nonce, const uint8_t* dh, enclave_node_report_t* report)
 {
     crypto_assert(node_id < MAX_ENCLAVES);
     enclave_node_t * node = enclave_node_at(node_id);
 
-    enclave_node_report(node, dh, report);
+    enclave_node_report(node, nonce, dh, report);
 }
 
 /**
@@ -140,6 +143,7 @@ typedef struct enclave_remote_attestation_context_t
     enum enclave_remote_attestation_step_t step;
     crypto_dh_context_t dh;
     uint32_t peer_node, peer_par;
+    uint8_t nonce[ENCLAVE_ATTESTATION_NONCE_SIZE];
 } enclave_remote_attestation_context_t;
 
 #define ENCLAVE_REMOTE_ATTESTATION_CONTEXT_INIT \
@@ -151,6 +155,7 @@ typedef struct enclave_remote_attestation_context_t
 typedef struct enclave_remote_attestation_challenge_t
 {
     uint32_t node, par;
+    uint8_t nonce[ENCLAVE_ATTESTATION_NONCE_SIZE];
     uint8_t dh[CRYPTO_DH_PUBKEY_SIZE];
 } __attribute__((packed)) enclave_remote_attestation_challenge_t;
 

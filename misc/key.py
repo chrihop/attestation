@@ -399,7 +399,7 @@ class CommandTrust(CommandElfSkeleton):
         with open(f_trust, 'r') as f:
             return yaml.safe_load(f)
 
-    def generate_trust_fragments(self, trust: list[str], sk):
+    def generate_trust_fragments(self, trust: list, sk):
         slots = bytearray(max_trust_slots * digest_size)
         for i, t in enumerate(trust):
             slots[i * 32: (i + 1) * 32] = bytes.fromhex(t)

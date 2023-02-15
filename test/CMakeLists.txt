@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 include(${ATTESTATION_TOP_DIR}/cmake/enclave_user_build.cmake)
 
 link_libraries(
-    enclave_platform
+    enclave_common
     crypto_abstract
     mbedcrypto
     GTest::gtest_main
