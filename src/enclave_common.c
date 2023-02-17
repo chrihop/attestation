@@ -155,8 +155,9 @@ cleanup:
 
 /**
  * Attestation Facilities
- * - remote attestation [RA]
- * - mutual attestation [MA]
+ * - remote attestation [RA] - non-enclave -> enclave
+ * - mutual attestation [MA] - enclave <-> enclave (different ROTs)
+ * - local attestation [LA] - enclave <-> enclave (same ROT)
  */
 
 void
@@ -240,44 +241,45 @@ cleanup:
  * Remote Attestation
  */
 
-void enclave_ra_free(enclave_remote_attestation_context_t* ctx)
+void enclave_attestation_free(enclave_attestation_context_t* ctx)
 {
     crypto_dh_free(&ctx->dh);
-    ctx->step = ERA_STEP_INIT;
+    ctx->step = EAI_STEP_INIT;
 }
 
 /**
  * @brief A non-enclave node propose a challenge to an enclave node
  */
-void enclave_ra_challenge(enclave_remote_attestation_context_t* ctx,
-    enclave_remote_attestation_challenge_t * challenge)
+void enclave_ra_challenge(enclave_attestation_context_t* ctx,
+    enclave_attestation_challenge_t * challenge)
 {
     crypto_assert(ctx != NULL);
-    crypto_assert(ctx->step == ERA_STEP_INIT);
+    crypto_assert(ctx->step == EAI_STEP_INIT);
 
+    challenge->type = EAI_TYPE_REMOTE;
     crypto_rng(ctx->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
     __builtin_memcpy(challenge->nonce, ctx->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
     crypto_dh_propose(&ctx->dh, challenge->dh);
-    ctx->step = ERA_STEP_CHALLENGE;
+    ctx->step = EAI_STEP_CHALLENGE;
 }
 
 /**
  * @brief An non-enclave node verify the challenge from an enclave node
  */
-err_t enclave_ra_verify(enclave_remote_attestation_context_t* ctx,
+err_t enclave_ra_verify(enclave_attestation_context_t* ctx,
     const uint8_t * remote_binary,
     const uint8_t * remote_rvk_pem, size_t remote_rvk_pem_size,
     const enclave_node_report_t * report)
 {
     crypto_assert(ctx != NULL);
-    crypto_assert(ctx->step == ERA_STEP_CHALLENGE);
+    crypto_assert(ctx->step == EAI_STEP_CHALLENGE);
 
     err_t err;
     err = enclave_report_verify(
         report, ctx->nonce, remote_binary, remote_rvk_pem, remote_rvk_pem_size);
     if (err != ERR_OK)
     {
-        ctx->step = ERA_STEP_FAILED;
+        ctx->step = EAI_STEP_FAILED;
         goto cleanup;
     }
 
@@ -285,7 +287,7 @@ err_t enclave_ra_verify(enclave_remote_attestation_context_t* ctx,
 
     ctx->peer_node = report->b.id;
     ctx->peer_par = report->b.par;
-    ctx->step = ERA_STEP_FINISH;
+    ctx->step = EAI_STEP_FINISH;
 
 cleanup:
     return err;
@@ -297,14 +299,14 @@ cleanup:
  */
 void enclave_ra_response(
     uint32_t node_id,
-    const enclave_remote_attestation_challenge_t * challenge,
+    const enclave_attestation_challenge_t * challenge,
     enclave_node_report_t * report,
     enclave_endpoint_context_t * endpoint)
 {
     crypto_assert(challenge != NULL);
     crypto_assert(report != NULL);
 
-    enclave_remote_attestation_context_t ctx = ENCLAVE_REMOTE_ATTESTATION_CONTEXT_INIT;
+    enclave_attestation_context_t ctx = ENCLAVE_ATTESTATION_CONTEXT_INIT;
     crypto_dh_exchange_propose(&ctx.dh, challenge->dh, report->b.dh);
     enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
 
@@ -315,23 +317,125 @@ void enclave_ra_response(
         endpoint->peer_par = report->b.par;
     }
 
-    enclave_ra_free(&ctx);
+    enclave_attestation_free(&ctx);
 }
 
 /**
- * @brief A non-enclave node derive the shared secret key for communication
+ * @brief A node derive the shared secret key for communication
  */
-void enclave_ra_derive_endpoint(enclave_remote_attestation_context_t* ctx,
+void enclave_attestation_derive_endpoint(enclave_attestation_context_t* ctx,
     enclave_endpoint_context_t* endpoint)
 {
     crypto_assert(ctx != NULL);
-    crypto_assert(ctx->step == ERA_STEP_FINISH);
+    crypto_assert(ctx->step == EAI_STEP_FINISH);
     crypto_assert(endpoint != NULL);
 
     crypto_dh_derive_aead(&ctx->dh, &endpoint->aead);
     endpoint->peer_id = ctx->peer_node;
     endpoint->peer_par = ctx->peer_par;
 
-    enclave_ra_free(ctx);
-    ctx->step = ERA_STEP_INIT;
+    enclave_attestation_free(ctx);
+    ctx->step = EAI_STEP_INIT;
+}
+
+/**
+ * Mutual Attestation
+ */
+
+/**
+ * @brief An enclave node propose a challenge to another enclave node
+ */
+void enclave_ma_initiator_challenge(enclave_attestation_context_t* ctx,
+    enclave_attestation_challenge_t * challenge)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_INIT);
+
+    enclave_ra_challenge(ctx, challenge);
+    challenge->type = EAI_TYPE_MUTUAL;
+}
+
+/**
+ * @brief An enclave node create a [challenge response] to the [challenge] from another enclave node
+ */
+void enclave_ma_responder_response(enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const enclave_attestation_challenge_t * challenge,
+    enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_INIT);
+
+    __builtin_memcpy(ctx->nonce, challenge->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->b.dh);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
+
+    ctx->peer_node = report->b.id;
+    ctx->peer_par = report->b.par;
+    ctx->step = EAI_STEP_CHALLENGE;
+}
+
+const static uint8_t _enclave_ma_empty_dh[CRYPTO_DH_PUBKEY_SIZE] = {0};
+
+/**
+ * @brief An enclave node verify the [challenge response] from another enclave node
+ *       and generate a [response] to the enclave node
+ */
+err_t enclave_ma_initiator_response(
+    enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const uint8_t * peer_binary,
+    const uint8_t * peer_rvk_pem, size_t peer_rvk_pem_size,
+    const enclave_node_report_t * challenge_report,
+    enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_CHALLENGE);
+
+    err_t err = enclave_report_verify(
+        challenge_report, ctx->nonce, peer_binary, peer_rvk_pem, peer_rvk_pem_size);
+    if (err != ERR_OK)
+    {
+        ctx->step = EAI_STEP_FAILED;
+        goto cleanup;
+    }
+
+    crypto_dh_exchange(&ctx->dh, challenge_report->b.dh);
+
+    ctx->peer_node = challenge_report->b.id;
+    ctx->peer_par = challenge_report->b.par;
+    ctx->step = EAI_STEP_FINISH;
+
+    enclave_node_report_by_node(node_id, ctx->nonce, _enclave_ma_empty_dh, report);
+
+cleanup:
+    return err;
+}
+
+/**
+ * @brief An enclave node verify the [response] from another enclave node
+ */
+err_t enclave_ma_responder_verify(
+    enclave_attestation_context_t* ctx,
+    const uint8_t * remote_binary,
+    const uint8_t * remote_rvk_pem, size_t remote_rvk_pem_size,
+    const enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_CHALLENGE);
+    crypto_assert(remote_binary != NULL);
+    crypto_assert(remote_rvk_pem != NULL);
+    crypto_assert(report != NULL);
+
+    err_t err = enclave_report_verify(
+        report, ctx->nonce, remote_binary, remote_rvk_pem, remote_rvk_pem_size);
+    if (err != ERR_OK)
+    {
+        ctx->step = EAI_STEP_FAILED;
+        goto cleanup;
+    }
+    ctx->step = EAI_STEP_FINISH;
+
+cleanup:
+    return err;
 }
