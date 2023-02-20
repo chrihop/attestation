@@ -9,7 +9,7 @@
 using namespace std;
 
 #include "common.h"
-#include <enclave_platform.h>
+#include <enclave_common.h>
 
 class EnclavePlatformAttestationTest : public ::testing::Test
 {

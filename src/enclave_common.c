@@ -1,6 +1,6 @@
 #include <mbedtls/platform.h>
 
-#include <enclave_platform.h>
+#include <enclave_common.h>
 
 static enclave_platform_context_t epc;
 
@@ -57,6 +57,8 @@ void enclave_node_load_chunk(
 }
 
 /**
+ * in an ELF file:
+ * \verbatim
  * +--------------------------------+
  * |                                |
  * |            Chunk               |
@@ -68,6 +70,7 @@ void enclave_node_load_chunk(
  * +--------------------------------+
  * | DVK_SIG: Sign(DVK, RSK)        |
  * +--------------------------------+
+ * \endverbatim
  */
 err_t
 enclave_node_load_verify(enclave_node_t* node, const uint8_t* sig,
@@ -109,6 +112,8 @@ cleanup:
 }
 
 /**
+ * in an ELF file:
+ * \verbatim
  * +---------------------------------+
  * |         Trust Slots[0]          |
  * +---------------------------------+
@@ -120,6 +125,7 @@ cleanup:
  * +=================================+
  * |SLOTS_SIG: Sign(Hash(Slots), DSK)|
  * +---------------------------------+
+ * \endverbatim
  */
 err_t
 enclave_node_trust_slots_verify(enclave_node_t* node, const uint8_t* slots,

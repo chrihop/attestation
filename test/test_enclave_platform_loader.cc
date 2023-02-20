@@ -9,7 +9,7 @@
 #include <vector>
 using namespace std;
 
-#include <enclave_platform.h>
+#include <enclave_common.h>
 
 void _puthex(const char * name, const vector<unsigned char> & data)
 {

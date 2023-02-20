@@ -1,5 +1,5 @@
-#ifndef _ENCLAVE_PLATFORM_H_
-#define _ENCLAVE_PLATFORM_H_
+#ifndef _ENCLAVE_COMMON_H_
+#define _ENCLAVE_COMMON_H_
 
 #include <abstraction.h>
 #include <config.h>
@@ -267,4 +267,4 @@ err_t enclave_ma_responder_verify(
 };
 #endif
 
-#endif /* _ENCLAVE_PLATFORM_H_ */
+#endif /* _ENCLAVE_COMMON_H_ */
