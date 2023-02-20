@@ -159,7 +159,7 @@ err_t crypto_aead_decrypt(in_out crypto_aead_context_t* ctx,
     const in uint8_t* ad, in size_t ad_len, const in uint8_t* ciphertext,
     in size_t ciphertext_len, const in uint8_t* nonce, out uint8_t* plaintext);
 
-void crypto_aead_peer(in crypto_aead_context_t* ctx,
+void crypto_aead_peer(const in crypto_aead_context_t* ctx,
     out crypto_aead_context_t * peer);
 
 void crypto_aead_init(in_out crypto_aead_context_t * ctx);
@@ -297,6 +297,11 @@ typedef struct crypto_pki_context_t
         .ds = CRYPTO_DS_CONTEXT_INIT,                                          \
     }
 
+typedef struct crypto_pki_certificate_t {
+    uint8_t pubkey[CRYPTO_DS_PUBKEY_SIZE];
+    uint8_t endorsement[CRYPTO_DS_SIGNATURE_SIZE];
+} __attribute((packed)) crypto_pki_certificate_t;
+
 void crypto_pki_load_root(void);
 
 const crypto_pki_context_t * crypto_pki_root();
@@ -306,6 +311,9 @@ void crypto_pki_endorse(in const crypto_pki_context_t * endorser, in_out crypto_
 err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t * endorsement);
 
 void crypto_pki_free(in_out crypto_pki_context_t * ctx);
+
+void crypto_pki_export_certificate(in const crypto_pki_context_t * ctx,
+    out crypto_pki_certificate_t * cert);
 
 /**
  * Global Context

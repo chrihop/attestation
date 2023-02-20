@@ -31,6 +31,35 @@ void enclave_platform_free()
     epc.n_nodes = 0;
 }
 
+void enclave_platform_fetch_session_cert(crypto_pki_certificate_t * session_cert)
+{
+    crypto_assert(session_cert != NULL);
+    crypto_pki_export_certificate(&epc.session, session_cert);
+}
+
+err_t enclave_platform_session_check(uint8_t * session_pubkey,
+    uint8_t * session_sig)
+{
+    crypto_assert(session_pubkey != NULL);
+    crypto_assert(session_sig != NULL);
+
+    uint8_t pubkey[CRYPTO_DS_PUBKEY_SIZE];
+    crypto_ds_export_pubkey(&epc.session.ds, pubkey);
+
+    int rv = __builtin_memcmp(session_pubkey, pubkey, CRYPTO_DS_PUBKEY_SIZE);
+    if (rv != 0)
+    {
+        return ERR_VERIFICATION_FAILED;
+    }
+
+    rv = __builtin_memcmp(session_sig, epc.session.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    if (rv != 0)
+    {
+        return ERR_VERIFICATION_FAILED;
+    }
+    return ERR_OK;
+}
+
 enclave_node_t * enclave_node_create(size_t par_id)
 {
     size_t node_id = enclave_nodes_mgmt_alloc();
@@ -191,6 +220,40 @@ enclave_node_report(struct enclave_node_t* node, const uint8_t* nonce,
     crypto_ds_sign(&epc.session.ds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE, report->report_sig);
 }
 
+static err_t
+enclave_report_verify_with(
+    crypto_ds_context_t * session_ds,
+    const enclave_node_report_t* report,
+    const uint8_t * nonce,
+    const uint8_t * hash)
+{
+    err_t err;
+
+    err = crypto_ds_verify(
+        session_ds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE,
+        report->report_sig);
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    int rv = __builtin_memcmp(report->b.hash, hash, CRYPTO_HASH_SIZE);
+    err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
+
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    if (nonce != NULL)
+    {
+        rv = __builtin_memcmp(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+        err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
+    }
+cleanup:
+    return err;
+}
+
 err_t
 enclave_report_verify(const enclave_node_report_t* report,
     const uint8_t * nonce,
@@ -214,33 +277,46 @@ enclave_report_verify(const enclave_node_report_t* report,
     }
 
     crypto_ds_import_pubkey_psa_format(&sds, report->b.session_pubkey);
-    err = crypto_ds_verify(
-        &sds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE,
-        report->report_sig);
-    if (err != ERR_OK)
-    {
-        goto cleanup;
-    }
-
-    int rv = __builtin_memcmp(report->b.hash, hash, CRYPTO_HASH_SIZE);
-    err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
-
-    if (err != ERR_OK)
-    {
-        goto cleanup;
-    }
-
-    if (nonce != NULL)
-    {
-        rv = __builtin_memcmp(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
-        err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
-    }
+    err = enclave_report_verify_with(&sds, report, nonce, hash);
 
 cleanup:
     crypto_ds_free(&rds);
     crypto_ds_free(&sds);
 
     return err;
+}
+
+err_t
+enclave_report_verify_local(const enclave_node_report_t* report,
+    const uint8_t* nonce, const uint8_t* hash)
+{
+    err_t err = ERR_OK;
+    int rv;
+    crypto_ds_context_t sds = CRYPTO_DS_CONTEXT_INIT;
+    struct crypto_pki_certificate_t session_cert;
+    enclave_platform_fetch_session_cert(&session_cert);
+    rv = __builtin_memcmp(session_cert.pubkey, report->b.session_pubkey, CRYPTO_DS_PUBKEY_SIZE);
+    if (rv != 0)
+    {
+        return ERR_VERIFICATION_FAILED;
+    }
+
+    rv = __builtin_memcmp(session_cert.endorsement, session_cert.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    if (rv != 0)
+    {
+        return ERR_VERIFICATION_FAILED;
+    }
+
+    crypto_ds_import_pubkey_psa_format(&sds, report->b.session_pubkey);
+    err = enclave_report_verify_with(&sds, report, nonce, hash);
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+cleanup:
+    crypto_ds_free(&sds);
+    return rv;
 }
 
 /**
@@ -329,7 +405,8 @@ void enclave_ra_response(
 /**
  * @brief A node derive the shared secret key for communication
  */
-void enclave_attestation_derive_endpoint(enclave_attestation_context_t* ctx,
+void
+enclave_endpoint_derive_from_attestation(enclave_attestation_context_t* ctx,
     enclave_endpoint_context_t* endpoint)
 {
     crypto_assert(ctx != NULL);
@@ -444,4 +521,192 @@ err_t enclave_ma_responder_verify(
 
 cleanup:
     return err;
+}
+
+/**
+* Local Attestation
+*/
+
+/**
+ * @brief An enclave node propose a challenge to another local enclave node
+ */
+void enclave_la_initiator_challenge(enclave_attestation_context_t* ctx,
+    enclave_attestation_challenge_t * challenge)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_INIT);
+
+    enclave_ra_challenge(ctx, challenge);
+    challenge->type = EAI_TYPE_LOCAL;
+}
+
+/**
+ * @brief An enclave node create a [challenge response] to the [challenge] from another enclave node
+ */
+void enclave_la_responder_response(enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const enclave_attestation_challenge_t * challenge,
+    enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_INIT);
+
+    __builtin_memcpy(ctx->nonce, challenge->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->b.dh);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
+
+    ctx->peer_node = report->b.id;
+    ctx->peer_par = report->b.par;
+    ctx->step = EAI_STEP_CHALLENGE;
+}
+
+
+/**
+ * @brief An enclave node verify the [challenge response] from another enclave node
+ *       and generate a [response] to the enclave node
+ */
+err_t enclave_la_initiator_response(
+    enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const uint8_t * peer_binary,
+    const enclave_node_report_t * challenge_report,
+    enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_CHALLENGE);
+    err_t err;
+
+    err = enclave_report_verify_local(
+        challenge_report, ctx->nonce, peer_binary);
+    if (err != ERR_OK)
+    {
+        ctx->step = EAI_STEP_FAILED;
+        goto cleanup;
+    }
+
+    crypto_dh_exchange(&ctx->dh, challenge_report->b.dh);
+
+    ctx->peer_node = challenge_report->b.id;
+    ctx->peer_par = challenge_report->b.par;
+    ctx->step = EAI_STEP_FINISH;
+
+    enclave_node_report_by_node(node_id, ctx->nonce, _enclave_ma_empty_dh, report);
+
+cleanup:
+    return err;
+}
+
+/**
+ * @brief An enclave node verify the [response] from another enclave node
+ */
+err_t enclave_la_responder_verify(
+    enclave_attestation_context_t* ctx,
+    const uint8_t * peer_binary,
+    const enclave_node_report_t * report)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(ctx->step == EAI_STEP_CHALLENGE);
+    crypto_assert(peer_binary != NULL);
+    crypto_assert(report != NULL);
+
+    err_t err = enclave_report_verify_local(report, ctx->nonce, peer_binary);
+    if (err != ERR_OK)
+    {
+        ctx->step = EAI_STEP_FAILED;
+        goto cleanup;
+    }
+    ctx->step = EAI_STEP_FINISH;
+cleanup:
+    return err;
+}
+
+/**
+* Endpoints
+*/
+
+void enclave_endpoint_init(enclave_endpoint_context_t * ep,
+    uint32_t node_id, uint32_t node_par)
+{
+    crypto_assert(ep != NULL);
+
+    ep->node_id = node_id;
+    ep->node_par = node_par;
+    ep->timestamp = 0;
+    ep->status = EES_INIT;
+}
+
+void enclave_endpoint_seal(enclave_endpoint_context_t * ep,
+    const uint8_t * data, size_t size, enclave_message_t * output)
+{
+    crypto_assert(ep != NULL);
+    crypto_assert(data != NULL);
+    crypto_assert(output != NULL);
+    crypto_assert(ep->status == EES_ESTABLISHED);
+
+    output->header.sequence = ep->timestamp ++;
+    output->header.node_id = ep->node_id;
+    output->header.node_par = ep->node_par;
+    output->header.size = CRYPTO_AEAD_CIPHERTEXT_SIZE(size);
+
+    crypto_aead_encrypt(&ep->aead,
+        (const uint8_t *) &output->header.node_par, ENCLAVE_MESSAGE_AUTH_SIZE,
+        data, size, output->data, output->header.nonce);
+}
+
+err_t enclave_endpoint_unseal(enclave_endpoint_context_t * ep,
+    const enclave_message_t * input, uint8_t * output)
+{
+    crypto_assert(ep != NULL);
+    crypto_assert(input != NULL);
+    crypto_assert(output != NULL);
+    crypto_assert(ep->status == EES_ESTABLISHED);
+
+    err_t err;
+    err = crypto_aead_decrypt(&ep->aead,
+        (const uint8_t *) &input->header.node_par, ENCLAVE_MESSAGE_AUTH_SIZE,
+        input->data, input->header.size, input->header.nonce, output);
+    if (err != ERR_OK)
+    {
+        goto cleanup;
+    }
+
+    if (input->header.sequence >= ep->timestamp)
+    {
+        ep->timestamp = input->header.sequence + 1;
+    }
+
+cleanup:
+    return err;
+}
+
+void enclave_endpoint_derive_from_key(enclave_endpoint_context_t * ep,
+    const uint8_t * key)
+{
+    crypto_assert(ep != NULL);
+    crypto_assert(ep->status == EES_INIT);
+    crypto_assert(key != NULL);
+
+    crypto_aead_import(&ep->aead, key);
+    ep->status = EES_ESTABLISHED;
+}
+
+void enclave_endpoint_derive_from_endpoint(enclave_endpoint_context_t * ep,
+    const enclave_endpoint_context_t * peer)
+{
+    crypto_assert(ep != NULL);
+    crypto_assert(ep->status == EES_INIT);
+    crypto_assert(peer != NULL);
+    crypto_assert(peer->status == EES_ESTABLISHED);
+
+    crypto_aead_peer(&peer->aead, &ep->aead);
+    ep->status = EES_ESTABLISHED;
+}
+
+void enclave_endpoint_free(enclave_endpoint_context_t * ep)
+{
+    crypto_assert(ep != NULL);
+    crypto_assert(ep->status == EES_ESTABLISHED);
+
+    crypto_aead_free(&ep->aead);
+    ep->status = EES_INIT;
 }

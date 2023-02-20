@@ -396,7 +396,7 @@ crypto_aead_decrypt(
     return status == PSA_SUCCESS ? ERR_OK : ERR_VERIFICATION_FAILED;
 }
 
-void crypto_aead_peer(in crypto_aead_context_t* ctx,
+void crypto_aead_peer(const in crypto_aead_context_t* ctx,
     out crypto_aead_context_t * peer)
 {
     if (peer->has_key)
@@ -782,6 +782,16 @@ err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t *
     err_t rv = crypto_ds_verify(&endorser, identity, CRYPTO_DS_PUBKEY_SIZE, endorsement);
     crypto_ds_free(&endorser);
     return rv;
+}
+
+void crypto_pki_export_certificate(in const crypto_pki_context_t * ctx,
+    out crypto_pki_certificate_t * cert)
+{
+    crypto_assert(ctx != NULL);
+    crypto_assert(cert != NULL);
+
+    crypto_ds_export_pubkey(&ctx->ds, cert->pubkey);
+    __builtin_memcpy(cert->endorsement, ctx->endorsement, CRYPTO_DS_SIGNATURE_SIZE);
 }
 
 void crypto_pki_free(in_out crypto_pki_context_t * ctx)

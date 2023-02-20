@@ -199,15 +199,27 @@ typedef struct enclave_attestation_challenge_t
 /**
  * Enclave communication endpoints
  */
+enum enclave_endpoint_status_t
+{
+    EES_INIT,
+    EES_ESTABLISHED,
+    EES_FAILED
+};
+
 typedef struct enclave_endpoint_context_t
 {
+    enum enclave_endpoint_status_t status;
     crypto_aead_context_t aead;
     uint32_t peer_id, peer_par;
+    uint32_t node_id, node_par;
+    uint32_t timestamp;
 } enclave_endpoint_context_t;
 
-#define ENCLAVE_ENDPOINT_CONTEXT_INIT \
-    {                                 \
-        .aead = CRYPTO_AEAD_CONTEXT_INIT, \
+#define ENCLAVE_ENDPOINT_CONTEXT_INIT                                          \
+    {                                                                          \
+        .status = EES_INIT,                                                    \
+        .aead = CRYPTO_AEAD_CONTEXT_INIT,                                      \
+        .timestamp = 0,                                                        \
     }
 
 /**
@@ -215,7 +227,7 @@ typedef struct enclave_endpoint_context_t
  */
 void enclave_attestation_free(enclave_attestation_context_t* ctx);
 
-void enclave_attestation_derive_endpoint(enclave_attestation_context_t* ctx,
+void enclave_endpoint_derive_from_attestation(enclave_attestation_context_t* ctx,
     enclave_endpoint_context_t* endpoint);
 
 /**
@@ -262,6 +274,74 @@ err_t enclave_ma_responder_verify(
     const enclave_node_report_t * report);
 
 
+/**
+ * Local attestation
+ */
+
+void enclave_la_initiator_challenge(enclave_attestation_context_t* ctx,
+    enclave_attestation_challenge_t * challenge);
+
+void enclave_la_responder_response(enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const enclave_attestation_challenge_t * challenge,
+    enclave_node_report_t * report);
+
+err_t enclave_la_initiator_response(
+    enclave_attestation_context_t* ctx,
+    uint32_t node_id,
+    const uint8_t * peer_binary,
+    const enclave_node_report_t * challenge_report,
+    enclave_node_report_t * report);
+
+err_t enclave_la_responder_verify(
+    enclave_attestation_context_t* ctx,
+    const uint8_t * remote_binary,
+    const enclave_node_report_t * report);
+
+/**
+ * Enclave communication endpoints
+ */
+#define plain
+#define authenticated
+#define sealed
+
+typedef struct enclave_message_header_t {
+    plain uint32_t sequence;
+    plain uint8_t nonce[ENCLAVE_ATTESTATION_NONCE_SIZE];
+    authenticated uint32_t node_par __attribute((aligned(8)));
+    authenticated uint32_t node_id;
+    authenticated uint32_t size;
+} __attribute((packed)) enclave_message_header_t;
+
+#define ENCLAVE_MESSAGE_HEADER_SIZE sizeof(enclave_message_header_t)
+
+#define ENCLAVE_MESSAGE_AUTH_SIZE \
+    (offsetof(enclave_message_header_t, size) - offsetof(enclave_message_header_t, node_par))
+
+typedef struct enclave_message_t {
+    enclave_message_header_t header;
+    sealed uint8_t data[];
+} __attribute((packed)) enclave_message_t;
+
+#define ENCLAVE_MESSAGE_SIZE(size) (ENCLAVE_MESSAGE_HEADER_SIZE + \
+    CRYPTO_AEAD_CIPHERTEXT_SIZE(size))
+
+void enclave_endpoint_init(enclave_endpoint_context_t * ep,
+    uint32_t node_id, uint32_t node_par);
+
+void enclave_endpoint_seal(enclave_endpoint_context_t * ep,
+    const uint8_t * data, size_t size, enclave_message_t * output);
+
+err_t enclave_endpoint_unseal(enclave_endpoint_context_t * ep,
+    const enclave_message_t * input, uint8_t * output);
+
+void enclave_endpoint_derive_from_key(enclave_endpoint_context_t * ep,
+    const uint8_t * key);
+
+void enclave_endpoint_derive_from_endpoint(enclave_endpoint_context_t * ep,
+    const enclave_endpoint_context_t * peer);
+
+void enclave_endpoint_free(enclave_endpoint_context_t * ep);
 
 #if defined(__cplusplus) && __cplusplus
 };
