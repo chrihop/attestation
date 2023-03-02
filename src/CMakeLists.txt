@@ -30,6 +30,7 @@ endif()
 add_library(enclave_common
     STATIC
     enclave_common.c
+    enclave_protocol_dds.c
     )
 
 target_link_libraries(enclave_common
