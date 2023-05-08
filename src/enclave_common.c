@@ -203,21 +203,21 @@ enclave_node_report(struct enclave_node_t* node, const uint8_t* nonce,
     crypto_assert(dh != NULL);
     crypto_assert(report != NULL);
 
-    report->b.id = node->node_id;
-    report->b.par = node->par_id;
+    report->content.id = node->node_id;
+    report->content.par = node->par_id;
     if (nonce == NULL)
     {
-        __builtin_memset(report->b.nonce, 0, ENCLAVE_ATTESTATION_NONCE_SIZE);
+        __builtin_memset(report->content.nonce, 0, ENCLAVE_ATTESTATION_NONCE_SIZE);
     }
     else
     {
-        __builtin_memcpy(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+        __builtin_memcpy(report->content.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
     }
-    __builtin_memcpy(report->b.dh, dh, CRYPTO_DH_PUBKEY_SIZE);
-    __builtin_memcpy(report->b.hash, node->hash, CRYPTO_HASH_SIZE);
-    crypto_ds_export_pubkey(&epc.session.ds, report->b.session_pubkey);
-    __builtin_memcpy(report->b.session_sig, epc.session.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
-    crypto_ds_sign(&epc.session.ds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE, report->report_sig);
+    __builtin_memcpy(report->content.dh, dh, CRYPTO_DH_PUBKEY_SIZE);
+    __builtin_memcpy(report->content.hash, node->hash, CRYPTO_HASH_SIZE);
+    crypto_ds_export_pubkey(&epc.session.ds, report->content.session_pubkey);
+    __builtin_memcpy(report->content.session_sig, epc.session.endorsement, CRYPTO_DS_SIGNATURE_SIZE);
+    crypto_ds_sign(&epc.session.ds, (const uint8_t*) &report->content, ENCLAVE_NODE_REPORT_BODY_SIZE, report->report_sig);
 }
 
 static err_t
@@ -230,14 +230,14 @@ enclave_report_verify_with(
     err_t err;
 
     err = crypto_ds_verify(
-        session_ds, (const uint8_t*) &report->b, ENCLAVE_NODE_REPORT_BODY_SIZE,
+        session_ds, (const uint8_t*) &report->content, ENCLAVE_NODE_REPORT_BODY_SIZE,
         report->report_sig);
     if (err != ERR_OK)
     {
         goto cleanup;
     }
 
-    int rv = __builtin_memcmp(report->b.hash, hash, CRYPTO_HASH_SIZE);
+    int rv = __builtin_memcmp(report->content.hash, hash, CRYPTO_HASH_SIZE);
     err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
 
     if (err != ERR_OK)
@@ -247,7 +247,7 @@ enclave_report_verify_with(
 
     if (nonce != NULL)
     {
-        rv = __builtin_memcmp(report->b.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
+        rv = __builtin_memcmp(report->content.nonce, nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
         err = rv == 0 ? ERR_OK : ERR_VERIFICATION_FAILED;
     }
 cleanup:
@@ -269,14 +269,14 @@ enclave_report_verify(const enclave_node_report_t* report,
     crypto_ds_import_pubkey(&rds, rvk_pem, rvk_pem_size);
 
     err = crypto_ds_verify(
-        &rds, report->b.session_pubkey, CRYPTO_DS_PUBKEY_SIZE,
-        report->b.session_sig);
+        &rds, report->content.session_pubkey, CRYPTO_DS_PUBKEY_SIZE,
+        report->content.session_sig);
     if (err != ERR_OK)
     {
         goto cleanup;
     }
 
-    crypto_ds_import_pubkey_psa_format(&sds, report->b.session_pubkey);
+    crypto_ds_import_pubkey_psa_format(&sds, report->content.session_pubkey);
     err = enclave_report_verify_with(&sds, report, nonce, hash);
 
 cleanup:
@@ -295,7 +295,7 @@ enclave_report_verify_local(const enclave_node_report_t* report,
     crypto_ds_context_t sds = CRYPTO_DS_CONTEXT_INIT;
     struct crypto_pki_certificate_t session_cert;
     enclave_platform_fetch_session_cert(&session_cert);
-    rv = __builtin_memcmp(session_cert.pubkey, report->b.session_pubkey, CRYPTO_DS_PUBKEY_SIZE);
+    rv = __builtin_memcmp(session_cert.pubkey, report->content.session_pubkey, CRYPTO_DS_PUBKEY_SIZE);
     if (rv != 0)
     {
         return ERR_VERIFICATION_FAILED;
@@ -307,7 +307,7 @@ enclave_report_verify_local(const enclave_node_report_t* report,
         return ERR_VERIFICATION_FAILED;
     }
 
-    crypto_ds_import_pubkey_psa_format(&sds, report->b.session_pubkey);
+    crypto_ds_import_pubkey_psa_format(&sds, report->content.session_pubkey);
     err = enclave_report_verify_with(&sds, report, nonce, hash);
     if (err != ERR_OK)
     {
@@ -362,13 +362,14 @@ err_t enclave_ra_verify(enclave_attestation_context_t* ctx,
     if (err != ERR_OK)
     {
         ctx->step = EAI_STEP_FAILED;
+        enclave_attestation_free(ctx);
         goto cleanup;
     }
 
-    crypto_dh_exchange(&ctx->dh, report->b.dh);
+    crypto_dh_exchange(&ctx->dh, report->content.dh);
 
-    ctx->peer_node = report->b.id;
-    ctx->peer_par = report->b.par;
+    ctx->peer_node = report->content.id;
+    ctx->peer_par = report->content.par;
     ctx->step = EAI_STEP_FINISH;
 
 cleanup:
@@ -389,14 +390,15 @@ void enclave_ra_response(
     crypto_assert(report != NULL);
 
     enclave_attestation_context_t ctx = ENCLAVE_ATTESTATION_CONTEXT_INIT;
-    crypto_dh_exchange_propose(&ctx.dh, challenge->dh, report->b.dh);
-    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
+    crypto_dh_exchange_propose(&ctx.dh, challenge->dh, report->content.dh);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->content.dh, report);
 
     if (endpoint != NULL)
     {
         crypto_dh_derive_aead(&ctx.dh, &endpoint->aead);
-        endpoint->peer_id = report->b.id;
-        endpoint->peer_par = report->b.par;
+        endpoint->peer_id = report->content.id;
+        endpoint->peer_par = report->content.par;
+        endpoint->status = EES_ESTABLISHED;
     }
 
     enclave_attestation_free(&ctx);
@@ -416,6 +418,7 @@ enclave_endpoint_derive_from_attestation(enclave_attestation_context_t* ctx,
     crypto_dh_derive_aead(&ctx->dh, &endpoint->aead);
     endpoint->peer_id = ctx->peer_node;
     endpoint->peer_par = ctx->peer_par;
+    endpoint->status = EES_ESTABLISHED;
 
     enclave_attestation_free(ctx);
     ctx->step = EAI_STEP_INIT;
@@ -450,11 +453,11 @@ void enclave_ma_responder_response(enclave_attestation_context_t* ctx,
     crypto_assert(ctx->step == EAI_STEP_INIT);
 
     __builtin_memcpy(ctx->nonce, challenge->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
-    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->b.dh);
-    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
+    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->content.dh);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->content.dh, report);
 
-    ctx->peer_node = report->b.id;
-    ctx->peer_par = report->b.par;
+    ctx->peer_node = report->content.id;
+    ctx->peer_par = report->content.par;
     ctx->step = EAI_STEP_CHALLENGE;
 }
 
@@ -483,10 +486,10 @@ err_t enclave_ma_initiator_response(
         goto cleanup;
     }
 
-    crypto_dh_exchange(&ctx->dh, challenge_report->b.dh);
+    crypto_dh_exchange(&ctx->dh, challenge_report->content.dh);
 
-    ctx->peer_node = challenge_report->b.id;
-    ctx->peer_par = challenge_report->b.par;
+    ctx->peer_node = challenge_report->content.id;
+    ctx->peer_par = challenge_report->content.par;
     ctx->step = EAI_STEP_FINISH;
 
     enclave_node_report_by_node(node_id, ctx->nonce, _enclave_ma_empty_dh, report);
@@ -552,11 +555,11 @@ void enclave_la_responder_response(enclave_attestation_context_t* ctx,
     crypto_assert(ctx->step == EAI_STEP_INIT);
 
     __builtin_memcpy(ctx->nonce, challenge->nonce, ENCLAVE_ATTESTATION_NONCE_SIZE);
-    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->b.dh);
-    enclave_node_report_by_node(node_id, challenge->nonce, report->b.dh, report);
+    crypto_dh_exchange_propose(&ctx->dh, challenge->dh, report->content.dh);
+    enclave_node_report_by_node(node_id, challenge->nonce, report->content.dh, report);
 
-    ctx->peer_node = report->b.id;
-    ctx->peer_par = report->b.par;
+    ctx->peer_node = report->content.id;
+    ctx->peer_par = report->content.par;
     ctx->step = EAI_STEP_CHALLENGE;
 }
 
@@ -584,10 +587,10 @@ err_t enclave_la_initiator_response(
         goto cleanup;
     }
 
-    crypto_dh_exchange(&ctx->dh, challenge_report->b.dh);
+    crypto_dh_exchange(&ctx->dh, challenge_report->content.dh);
 
-    ctx->peer_node = challenge_report->b.id;
-    ctx->peer_par = challenge_report->b.par;
+    ctx->peer_node = challenge_report->content.id;
+    ctx->peer_par = challenge_report->content.par;
     ctx->step = EAI_STEP_FINISH;
 
     enclave_node_report_by_node(node_id, ctx->nonce, _enclave_ma_empty_dh, report);

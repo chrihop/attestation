@@ -36,7 +36,7 @@ void PANIC(const char* s, ...)
     vprintf(s, args);
     va_end(args);
     print_backtrace();
-    exit(1);
+    abort();
 }
 
 #if __cplusplus

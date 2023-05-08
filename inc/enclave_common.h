@@ -105,7 +105,7 @@ typedef struct enclave_node_report_body_t
 
 typedef struct enclave_node_report_t
 {
-    enclave_node_report_body_t b;
+    enclave_node_report_body_t content;
     uint8_t report_sig[CRYPTO_DS_SIGNATURE_SIZE];
 } __attribute__((packed)) enclave_node_report_t;
 

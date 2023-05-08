@@ -156,3 +156,54 @@ TEST_F(PsaSecureHash, sha256_multiple)
 
     ASSERT_EQ(hash_one, hash_multiple);
 }
+
+TEST_F(PsaSecureHash, hmac_sha265)
+{
+    psa_status_t status;
+    uint8_t hmac_key[32];
+    iota(hmac_key, hmac_key + sizeof(hmac_key), 0);
+
+    psa_key_id_t key;
+    psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_VERIFY_HASH);
+    psa_set_key_algorithm(&attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_set_key_type(&attr, PSA_KEY_TYPE_HMAC);
+
+    status = psa_import_key(&attr, hmac_key, sizeof(hmac_key), &key);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    vector<uint8_t> data(512);
+    iota(data.begin(), data.end(), 0);
+
+    vector<uint8_t> hash(32);
+    size_t olen;
+
+    status = psa_mac_compute(key,
+        PSA_ALG_HMAC(PSA_ALG_SHA_256),
+        data.data(),
+        data.size(), hash.data(), hash.size(), &olen);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    puthex(hash);
+
+    status = psa_mac_verify(key,
+        PSA_ALG_HMAC(PSA_ALG_SHA_256),
+        data.data(),
+        data.size(), hash.data(), hash.size());
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    status = psa_mac_compute(key,
+        PSA_ALG_HMAC(PSA_ALG_SHA_256),
+        data.data(),
+        data.size(), hash.data(), hash.size(), &olen);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    puthex(hash);
+
+    status = psa_mac_verify(key,
+        PSA_ALG_HMAC(PSA_ALG_SHA_256),
+        data.data(),
+        data.size(), hash.data(), hash.size());
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+}

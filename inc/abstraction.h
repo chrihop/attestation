@@ -11,7 +11,6 @@ extern "C" {
 
 void crypto_init(void);
 
-
 #if __cplusplus
 };
 #endif
