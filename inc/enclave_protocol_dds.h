@@ -1,3 +1,6 @@
+#ifndef _ENCLAVE_PROTOCOL_DDS_H_
+#define _ENCLAVE_PROTOCOL_DDS_H_
+
 #include <enclave_common.h>
 
 enum enclave_dds_protocol_t
@@ -287,3 +290,5 @@ err_t enclave_dds_priv_on_response(enclave_dds_challenger_ctx_t* ctx,
 #if defined(__cplusplus) && __cplusplus
 };
 #endif
+
+#endif /* _ENCLAVE_PROTOCOL_DDS_H_ */

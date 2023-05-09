@@ -91,6 +91,9 @@ add_executable(test_enclave_platform_attestation
 add_executable(test_enclave_protocol_dds
     test_enclave_protocol_dds.cc)
 
+add_executable(test_enclave_identities
+    test_enclave_identities.cc)
+
 add_custom_target(
     test_suites
     DEPENDS
@@ -102,6 +105,7 @@ add_custom_target(
     test_enclave_platform_loader
     test_enclave_platform_attestation
     test_enclave_protocol_dds
+    test_enclave_identities
 )
 
 # --
@@ -114,6 +118,7 @@ gtest_discover_tests(test_mbedtls_abstraction)
 gtest_discover_tests(test_enclave_platform_loader)
 gtest_discover_tests(test_enclave_platform_attestation)
 gtest_discover_tests(test_enclave_protocol_dds)
+gtest_discover_tests(test_enclave_identities)
 # --
 
 #

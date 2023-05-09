@@ -17,6 +17,7 @@ target_link_libraries(sample_enclave_user
     PRIVATE
     crypto_abstract
     mbedcrypto
+    enclave_common
 )
 
 set (ROOT_KEY                 ${ATTESTATION_TEST_DIR}/root_key.pem)

@@ -302,3 +302,4 @@ err_t enclave_dds_priv_on_response(
     enclave_attestation_free(&ctx->att);
     return ERR_OK;
 }
+

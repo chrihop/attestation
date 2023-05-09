@@ -3,8 +3,10 @@
 
 #define DYNAMIC_MEMORY_SIZE (4096 * 100) /* 400KB */
 
-#define MAX_ENCLAVES      64
-#define MAX_SLOTS         4
+#define MAX_ENCLAVES        64
+#define MAX_SLOTS           4
+#define MAX_REMOTE_DEVICES  4
+#define MAX_PUBKEY_PEM_SIZE 256
 
 
 #endif /* __ATTESTATION_CONFIG_H__ */

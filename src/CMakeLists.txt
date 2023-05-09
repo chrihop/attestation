@@ -29,6 +29,7 @@ endif()
 
 add_library(enclave_common
     STATIC
+    identities.c
     enclave_common.c
     enclave_protocol_dds.c
     )
@@ -50,4 +51,5 @@ target_link_libraries(dummy_main
     PRIVATE
     crypto_abstract
     mbedcrypto
+    enclave_common
     )

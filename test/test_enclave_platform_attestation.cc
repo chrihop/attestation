@@ -2,14 +2,13 @@
 #include <mbedtls/memory_buffer_alloc.h>
 #include <mbedtls/platform.h>
 #include <psa/crypto.h>
-#include <mbedtls/error.h>
-#include <mbedtls/pk.h>
 #include <numeric>
 #include <vector>
 using namespace std;
 
 #include "common.h"
 #include <enclave_common.h>
+#include <identities.h>
 
 class EnclavePlatformAttestationTest : public ::testing::Test
 {
@@ -664,7 +663,6 @@ TEST_F(EnclavePlatformAttestationTest, endpoint_seal)
 
 TEST_F(EnclavePlatformAttestationTest, endpoint_seal_memory_leak)
 {
-
 #if defined (MBEDTLS_MEMORY_DEBUG)
     size_t used_before, blocks_before, used_after, blocks_after;
     mbedtls_memory_buffer_alloc_cur_get(&used_before, &blocks_before);
