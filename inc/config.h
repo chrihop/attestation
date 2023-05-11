@@ -7,6 +7,7 @@
 #define MAX_SLOTS           4
 #define MAX_REMOTE_DEVICES  4
 #define MAX_PUBKEY_PEM_SIZE 256
+#define MAX_MSG_SEQS        4
 
 
 #endif /* __ATTESTATION_CONFIG_H__ */

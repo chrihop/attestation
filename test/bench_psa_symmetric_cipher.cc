@@ -11,6 +11,7 @@ using namespace std;
 
 static vector<unsigned char>
     data(1024),
+    raw_key(32),
     ciphertext(1024 + 64),
     plaintext(1024);
 
@@ -69,6 +70,31 @@ BM_KeyGen(benchmark::State& state)
     {
         psa_generate_key(&kattr, &key);
         psa_destroy_key(key);
+    }
+}
+
+static void
+    BM_KeyExport(benchmark::State& state)
+{
+    psa_status_t status;
+    psa_key_attributes_t kattr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_EXPORT);
+    psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
+    psa_set_key_type(&kattr, PSA_KEY_TYPE_AES);
+    psa_set_key_bits(&kattr, 128);
+
+    psa_key_handle_t key;
+    status = psa_generate_key(&kattr, &key);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    size_t olen;
+    status = psa_export_key(key, ::raw_key.data(), ::raw_key.size(), &olen);
+    ASSERT_EQ(status, PSA_SUCCESS);
+    ASSERT_LE(olen, ::raw_key.size());
+
+    for (auto _ : state)
+    {
+        psa_export_key(key, ::raw_key.data(), ::raw_key.size(), &olen);
     }
 }
 
@@ -311,6 +337,7 @@ static void
 
 BENCHMARK(BM_Warmup)->Iterations(10)->Setup(DoSetup);
 BENCHMARK(BM_RngGen);
+BENCHMARK(BM_KeyExport);
 BENCHMARK(BM_KeyGen);
 BENCHMARK(BM_Aes128Ctr);
 BENCHMARK(BM_Aes128Gcm);

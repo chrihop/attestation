@@ -303,3 +303,110 @@ err_t enclave_dds_priv_on_response(
     return ERR_OK;
 }
 
+/******************************************************************************
+ * DDS - Statemachine
+ ******************************************************************************/
+
+void
+enclave_dds_message_sequences(
+    enclave_dds_message_sequence_t * seq, size_t n, ...)
+{
+    __builtin_va_list args;
+    __builtin_va_start(args, n);
+    seq->n = n;
+    size_t bytes = 0;
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t sz = __builtin_va_arg(args, size_t);
+        seq->offsets[i] = bytes;
+        bytes += sz;
+    }
+    __builtin_va_end(args);
+}
+
+void enclave_dds_auth_publisher_init(
+    enclave_dds_auth_publisher_t * ctx,
+    size_t node_par, size_t node_id)
+{
+    enclave_endpoint_init(&ctx->ep, node_id, node_par);
+    ctx->me.id = (int) node_id;
+    ctx->me.par = (int) node_par;
+    crypto_rng(ctx->group_key, ENCLAVE_DDS_GROUP_KEY_SIZE);
+    enclave_endpoint_derive_from_key(&ctx->ep, ctx->group_key);
+
+    ctx->status = EDDS_AUTH_PUBLISHER_INIT;
+}
+
+void enclave_dds_auth_publisher_free(
+    enclave_dds_auth_publisher_t * ctx)
+{
+    enclave_endpoint_free(&ctx->ep);
+    ctx->status = EDDS_AUTH_PUBLISHER_UNINITIALIZED;
+}
+
+err_t enclave_dds_auth_on_message(
+    enclave_dds_auth_publisher_t * ctx,
+    const uint8_t * message,
+    size_t message_size,
+    uint8_t * output,
+    size_t output_size,
+    enclave_dds_message_sequence_t * seqs)
+{
+    crypto_assert(ctx->status == EDDS_AUTH_PUBLISHER_INIT);
+    crypto_assert(message != NULL);
+    crypto_assert(seqs != NULL);
+
+    enclave_dds_header_t * hd = (enclave_dds_header_t *) message;
+    if (!((hd->peer_id == ctx->me.id && hd->peer_par == ctx->me.par) ||
+          (hd->peer_id == ID_ANY && hd->peer_par == ID_ANY)))
+    {
+        return ERR_INVALID_ID;
+    }
+
+    if (message_size < hd->length)
+    {
+        return ERR_INVALID_SIZE;
+    }
+
+    switch (hd->protocol)
+    {
+    case EDDS_JOIN:
+        if (output_size < ENCLAVE_DDS_ANNOUNCE_MSG_SIZE)
+        {
+            return ERR_INVALID_SIZE;
+        }
+        enclave_dds_on_join(&ctx->me, (const enclave_dds_join_t *) message, (enclave_dds_announce_t *) output);
+        enclave_dds_message_sequences(seqs, 1, ENCLAVE_DDS_ANNOUNCE_MSG_SIZE);
+        break;
+    case EDDS_RA_CHALLENGE:
+        if (output_size < ENCLAVE_DDS_RA_RESPONSE_MSG_SIZE + ENCLAVE_DDS_NOTIFY_MSG_SIZE)
+        {
+            return ERR_INVALID_SIZE;
+        }
+        enclave_dds_auth_on_challenge(&ctx->me,
+            ctx->group_key, (const enclave_dds_ra_challenge_t *) message,
+            (enclave_dds_ra_response_t *) output,
+            (enclave_dds_notify_t *) (output + ENCLAVE_DDS_RA_RESPONSE_MSG_SIZE));
+        enclave_dds_message_sequences(seqs, 2, ENCLAVE_DDS_RA_RESPONSE_MSG_SIZE, ENCLAVE_DDS_NOTIFY_MSG_SIZE);
+        break;
+    default:
+        return ERR_INVALID_PROTOCOL;
+    }
+
+    return ERR_OK;
+}
+
+enum enclave_dds_auth_subscriber_connection_status_t
+{
+    EDDS_AUTH_SUBSCRIBER_CONN_INIT,
+    EDDS_AUTH_SUBSCRIBER_CONN_DISCOVERED,
+    EDDS_AUTH_SUBSCRIBER_CONN_CHALLENGED,
+    EDDS_AUTH_SUBSCRIBER_CONN_ESTABLISHED,
+};
+
+typedef struct enclave_dds_auth_subscriber_connection_t
+{
+    enum enclave_dds_auth_subscriber_connection_status_t status;
+    enclave_dds_challenger_ctx_t challenger;
+    enclave_endpoint_context_t ep;
+} enclave_dds_auth_subscriber_connection_t;

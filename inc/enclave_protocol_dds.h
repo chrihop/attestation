@@ -62,14 +62,14 @@ typedef struct enclave_dds_header_t
 
 typedef enclave_dds_header_t enclave_dds_join_t;
 
-#define ENCLAVE_DDS_JOIN_MSG_SIZE sizeof(struct enclave_dds_join_t)
+#define ENCLAVE_DDS_JOIN_MSG_SIZE sizeof(enclave_dds_join_t)
 
 #define ENCLAVE_DDS_JOIN_MSG(sub_id, sub_par)                                  \
     ENCLAVE_DDS_HEAD_ONLY_MSG(EDDS_JOIN, sub_id, sub_par, ID_ANY, ID_ANY)
 
 typedef enclave_dds_header_t enclave_dds_announce_t;
 
-#define ENCLAVE_DDS_ANNOUNCE_MSG_SIZE sizeof(struct enclave_dds_announce_t)
+#define ENCLAVE_DDS_ANNOUNCE_MSG_SIZE sizeof(enclave_dds_announce_t)
 
 #define ENCLAVE_DDS_ANNOUNCE_PEER_MSG(pub_id, pub_par, peer_id, peer_par)      \
     ENCLAVE_DDS_HEAD_ONLY_MSG(EDDS_ANNOUNCE, pub_id, pub_par, peer_id, peer_par)
@@ -286,6 +286,46 @@ err_t enclave_dds_priv_on_response(enclave_dds_challenger_ctx_t* ctx,
     const size_t                     device_rvk_pem_size,
     const enclave_dds_ma_response_t* input,
     enclave_dds_notify_t*            notification);
+
+/**
+ * DDS - Statemachine
+ */
+
+enum enclave_dds_auth_publisher_status_t
+{
+    EDDS_AUTH_PUBLISHER_UNINITIALIZED,
+    EDDS_AUTH_PUBLISHER_INIT,
+    EDDS_AUTH_PUBLISHER_UP,
+};
+
+typedef struct enclave_dds_auth_publisher_t
+{
+    enum enclave_dds_auth_publisher_status_t status;
+    enclave_dds_participant_t  me;
+    uint8_t group_key[ENCLAVE_DDS_GROUP_KEY_SIZE];
+    enclave_endpoint_context_t ep;
+} enclave_dds_auth_publisher_t;
+
+#define ENCLAVE_DDS_AUTH_PUBLISHER_INIT \
+    { EDDS_AUTH_PUBLISHER_UNINITIALIZED, ENCLAVE_ENDPOINT_CONTEXT_INIT }
+
+typedef struct enclave_dds_message_sequence_t
+{
+    size_t n;
+    size_t bytes;
+    size_t offsets[MAX_MSG_SEQS];
+} enclave_dds_message_sequence_t;
+
+void enclave_dds_auth_publisher_init(
+    enclave_dds_auth_publisher_t* ctx, size_t node_par, size_t node_id);
+
+void  enclave_dds_auth_publisher_free(enclave_dds_auth_publisher_t* ctx);
+
+err_t enclave_dds_auth_on_message(enclave_dds_auth_publisher_t* ctx,
+    const uint8_t* message, size_t message_size, uint8_t* output,
+    size_t output_size, enclave_dds_message_sequence_t* seqs);
+
+
 
 #if defined(__cplusplus) && __cplusplus
 };
