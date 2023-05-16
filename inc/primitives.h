@@ -73,9 +73,9 @@ enum err_t
 
 typedef enum err_t err_t;
 
-#define out
-#define in
-#define in_out
+#define _out_
+#define _in_
+#define _in_out_
 
 enum key_type_t
 {

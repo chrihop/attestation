@@ -221,7 +221,7 @@ crypto_init(void)
  * Key Generation
  */
 void
-crypto_rng(out unsigned char* output, in size_t output_len)
+crypto_rng(_out_ unsigned char* output, _in_ size_t output_len)
 {
     crypto_assert(output != NULL);
     psa_call(psa_generate_random, output, output_len);
@@ -254,7 +254,7 @@ crypto_b64_decode(unsigned char* dst, size_t dlen, size_t* olen,
  * Secure Hash
  */
 void
-crypto_hash_start(in_out crypto_hash_context_t * ctx)
+crypto_hash_start(_in_out_ crypto_hash_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
     if (ctx->status == SHS_IN_PROGRESS && ctx->operation != NULL && is_allocated(ctx->operation))
@@ -270,8 +270,8 @@ crypto_hash_start(in_out crypto_hash_context_t * ctx)
 }
 
 void
-crypto_hash_append(in_out crypto_hash_context_t * ctx,
-    in const unsigned char *input, in size_t len)
+crypto_hash_append(_in_out_ crypto_hash_context_t * ctx,
+    _in_ const unsigned char *input, _in_ size_t len)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(input != NULL);
@@ -279,8 +279,8 @@ crypto_hash_append(in_out crypto_hash_context_t * ctx,
 }
 
 void
-crypto_hash_report(in_out crypto_hash_context_t * ctx,
-    out uint8_t * output)
+crypto_hash_report(
+    _in_out_ crypto_hash_context_t * ctx, _out_ uint8_t * output)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(output != NULL);
@@ -295,8 +295,8 @@ crypto_hash_report(in_out crypto_hash_context_t * ctx,
 }
 
 err_t
-crypto_hash_verify(in_out crypto_hash_context_t * ctx,
-    in const uint8_t * hash)
+crypto_hash_verify(
+    _in_out_ crypto_hash_context_t * ctx, const _in_ uint8_t * hash)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(hash != NULL);
@@ -314,13 +314,13 @@ crypto_hash_verify(in_out crypto_hash_context_t * ctx,
  * Symmetric Stream Cipher (AEAD)
  */
 
-static void crypto_aead_keygen(in_out crypto_aead_context_t * ctx)
+static void crypto_aead_keygen(_in_out_ crypto_aead_context_t * ctx)
 {
     psa_call(psa_generate_key, &crypto_global.aead_default, &ctx->key);
     ctx->has_key = 1;
 }
 
-void crypto_aead_init(in_out crypto_aead_context_t * ctx)
+void crypto_aead_init(_in_out_ crypto_aead_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->key == 0);
@@ -335,12 +335,9 @@ void crypto_aead_init(in_out crypto_aead_context_t * ctx)
  * use nonce + key to decrypt
  * use tag to verify (ad :: plaintext)
  */
-void crypto_aead_encrypt(
-    in_out crypto_aead_context_t * ctx,
-    in const uint8_t * ad, in size_t ad_len,
-    in const uint8_t * plaintext, in size_t plaintext_len,
-    out uint8_t * ciphertext,
-    out uint8_t * nonce)
+void crypto_aead_encrypt(_in_out_ crypto_aead_context_t * ctx,
+    const _in_ uint8_t * ad, _in_ size_t ad_len, const _in_ uint8_t * plaintext,
+    _in_ size_t plaintext_len, _out_ uint8_t * ciphertext, _out_ uint8_t * nonce)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(plaintext != NULL);
@@ -369,12 +366,9 @@ void crypto_aead_encrypt(
  * (nonce, ad :: ciphertext :: tag) -> (plaintext, verified?)
  */
 err_t
-crypto_aead_decrypt(
-    in_out crypto_aead_context_t * ctx,
-    in const uint8_t * ad, in size_t ad_len,
-    in const uint8_t * ciphertext, in size_t ciphertext_len,
-    in const uint8_t * nonce,
-    out uint8_t * plaintext)
+crypto_aead_decrypt(_in_out_ crypto_aead_context_t * ctx,
+    const _in_ uint8_t * ad, _in_ size_t ad_len, const _in_ uint8_t * ciphertext,
+    _in_ size_t ciphertext_len, const _in_ uint8_t * nonce, _out_ uint8_t * plaintext)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ciphertext != NULL);
@@ -396,8 +390,7 @@ crypto_aead_decrypt(
     return status == PSA_SUCCESS ? ERR_OK : ERR_VERIFICATION_FAILED;
 }
 
-void crypto_aead_peer(const in crypto_aead_context_t* ctx,
-    out crypto_aead_context_t * peer)
+void crypto_aead_peer(const _in_ crypto_aead_context_t* ctx, _out_ crypto_aead_context_t * peer)
 {
     if (peer->has_key)
     {
@@ -408,7 +401,7 @@ void crypto_aead_peer(const in crypto_aead_context_t* ctx,
     peer->has_key = 1;
 }
 
-void crypto_aead_free(in_out crypto_aead_context_t * ctx)
+void crypto_aead_free(_in_out_ crypto_aead_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
     if (ctx->has_key)
@@ -418,7 +411,7 @@ void crypto_aead_free(in_out crypto_aead_context_t * ctx)
     ctx->has_key = 0;
 }
 
-void crypto_aead_export(in crypto_aead_context_t * ctx, out uint8_t * key)
+void crypto_aead_export(_in_ crypto_aead_context_t * ctx, _out_ uint8_t * key)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(key != NULL);
@@ -427,7 +420,8 @@ void crypto_aead_export(in crypto_aead_context_t * ctx, out uint8_t * key)
     crypto_assert(olen == CRYPTO_AEAD_KEY_SIZE);
 }
 
-void crypto_aead_import(in_out crypto_aead_context_t * ctx, in const uint8_t * key)
+void crypto_aead_import(
+    _in_out_ crypto_aead_context_t * ctx, const _in_ uint8_t * key)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(key != NULL);
@@ -444,7 +438,7 @@ void crypto_aead_import(in_out crypto_aead_context_t * ctx, in const uint8_t * k
  * Key Exchange
  */
 
-void crypto_dh_propose(in_out crypto_dh_context_t * ctx, out uint8_t * pubkey)
+void crypto_dh_propose(_in_out_ crypto_dh_context_t * ctx, _out_ uint8_t * pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == CRYPTO_DH_NOT_STARTED);
@@ -457,7 +451,8 @@ void crypto_dh_propose(in_out crypto_dh_context_t * ctx, out uint8_t * pubkey)
     ctx->step = CRYPTO_DH_PROPOSED;
 }
 
-void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey)
+void crypto_dh_exchange(
+    _in_out_ crypto_dh_context_t * ctx, const _in_ uint8_t * pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == CRYPTO_DH_PROPOSED);
@@ -490,7 +485,7 @@ void crypto_dh_exchange(in_out crypto_dh_context_t * ctx, const in uint8_t * pub
     ctx->step = CRYPTO_DH_EXCHANGED;
 }
 
-void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, const in uint8_t * pubkey, out uint8_t * out_pubkey)
+void crypto_dh_exchange_propose(_in_out_ crypto_dh_context_t * ctx, const _in_ uint8_t * pubkey, _out_ uint8_t * out_pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->step == CRYPTO_DH_NOT_STARTED);
@@ -527,7 +522,8 @@ void crypto_dh_exchange_propose(in_out crypto_dh_context_t * ctx, const in uint8
     ctx->step = CRYPTO_DH_EXCHANGED;
 }
 
-void crypto_dh_derive_aead(in_out crypto_dh_context_t * dh, out crypto_aead_context_t * aead)
+void crypto_dh_derive_aead(
+    _in_out_ crypto_dh_context_t * dh, _out_ crypto_aead_context_t * aead)
 {
     crypto_assert(dh != NULL);
     crypto_assert(dh->step == CRYPTO_DH_EXCHANGED);
@@ -543,7 +539,7 @@ void crypto_dh_derive_aead(in_out crypto_dh_context_t * dh, out crypto_aead_cont
     dh->step = CRYPTO_DH_NOT_STARTED;
 }
 
-void crypto_dh_free(in_out crypto_dh_context_t * ctx)
+void crypto_dh_free(_in_out_ crypto_dh_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
 
@@ -562,7 +558,7 @@ void crypto_dh_free(in_out crypto_dh_context_t * ctx)
  * Digital Signature
  */
 
-void crypto_ds_free(in_out crypto_ds_context_t * ctx)
+void crypto_ds_free(_in_out_ crypto_ds_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
 
@@ -573,8 +569,7 @@ void crypto_ds_free(in_out crypto_ds_context_t * ctx)
     ctx->has_key = 0;
 }
 
-void crypto_ds_sign(const in crypto_ds_context_t * ctx, const in uint8_t * msg, const in size_t msg_len,
-    out uint8_t * signature)
+void crypto_ds_sign(const _in_ crypto_ds_context_t * ctx, const _in_ uint8_t * msg, const _in_ size_t msg_len, _out_ uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->has_key);
@@ -593,8 +588,8 @@ void crypto_ds_sign(const in crypto_ds_context_t * ctx, const in uint8_t * msg, 
     crypto_assert(olen == CRYPTO_DS_SIGNATURE_SIZE);
 }
 
-err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, const in uint8_t * msg, in size_t msg_len,
-    const in uint8_t * signature)
+err_t crypto_ds_verify(const _in_ crypto_ds_context_t * ctx, const _in_ uint8_t * msg, _in_ size_t msg_len,
+    const _in_ uint8_t * signature)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->has_key);
@@ -619,7 +614,8 @@ err_t crypto_ds_verify(in const crypto_ds_context_t * ctx, const in uint8_t * ms
 }
 
 
-void crypto_ds_import(in_out crypto_ds_context_t * ctx, in const uint8_t * pem, size_t pem_len)
+void crypto_ds_import(
+    _in_out_ crypto_ds_context_t * ctx, const _in_ uint8_t * pem, size_t pem_len)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(pem != NULL);
@@ -655,8 +651,8 @@ void crypto_ds_import(in_out crypto_ds_context_t * ctx, in const uint8_t * pem, 
     ctx->has_key = 1;
 }
 
-void crypto_ds_import_pubkey(in_out crypto_ds_context_t * ctx,
-    in const uint8_t * pem, size_t pem_len)
+void crypto_ds_import_pubkey(
+    _in_out_ crypto_ds_context_t * ctx, const _in_ uint8_t * pem, size_t pem_len)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(pem != NULL);
@@ -700,8 +696,7 @@ void crypto_ds_import_pubkey(in_out crypto_ds_context_t * ctx,
 }
 
 void crypto_ds_import_pubkey_psa_format(
-    in_out crypto_ds_context_t * ctx,
-    in const uint8_t * pubkey)
+    _in_out_ crypto_ds_context_t * ctx, const _in_ uint8_t * pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(pubkey != NULL);
@@ -719,8 +714,8 @@ void crypto_ds_import_pubkey_psa_format(
     ctx->has_key = 1;
 }
 
-void crypto_ds_export_pubkey(in const crypto_ds_context_t * ctx,
-    out uint8_t * pubkey)
+void crypto_ds_export_pubkey(
+    const _in_ crypto_ds_context_t * ctx, _out_ uint8_t * pubkey)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(ctx->has_key);
@@ -749,7 +744,8 @@ void crypto_pki_load_root(void)
     crypto_ds_import(&crypto_global.root.ds, device_key_pem, device_key_len);
 }
 
-void crypto_pki_endorse(in const crypto_pki_context_t * endorser, in_out crypto_pki_context_t * endorsee)
+void crypto_pki_endorse(const _in_ crypto_pki_context_t * endorser,
+    _in_out_ crypto_pki_context_t * endorsee)
 {
     crypto_assert(endorser != NULL);
     crypto_assert(endorsee != NULL);
@@ -774,7 +770,8 @@ const crypto_pki_context_t * crypto_pki_root(void)
     return &crypto_global.root;
 }
 
-err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t * endorsement)
+err_t crypto_pki_verify(
+    _in_ uint8_t * pubkey, _in_ uint8_t * identity, _in_ uint8_t * endorsement)
 {
     crypto_ds_context_t endorser = CRYPTO_DS_CONTEXT_INIT;
     psa_call(psa_import_key, &crypto_global.ds_pubkey_default, pubkey, CRYPTO_DS_PUBKEY_SIZE, &endorser.key);
@@ -784,8 +781,8 @@ err_t crypto_pki_verify(in uint8_t * pubkey, in uint8_t * identity, in uint8_t *
     return rv;
 }
 
-void crypto_pki_export_certificate(in const crypto_pki_context_t * ctx,
-    out crypto_pki_certificate_t * cert)
+void crypto_pki_export_certificate(
+    const _in_ crypto_pki_context_t * ctx, _out_ crypto_pki_certificate_t * cert)
 {
     crypto_assert(ctx != NULL);
     crypto_assert(cert != NULL);
@@ -794,7 +791,7 @@ void crypto_pki_export_certificate(in const crypto_pki_context_t * ctx,
     __builtin_memcpy(cert->endorsement, ctx->endorsement, CRYPTO_DS_SIGNATURE_SIZE);
 }
 
-void crypto_pki_free(in_out crypto_pki_context_t * ctx)
+void crypto_pki_free(_in_out_ crypto_pki_context_t * ctx)
 {
     crypto_assert(ctx != NULL);
     crypto_ds_free(&ctx->ds);
