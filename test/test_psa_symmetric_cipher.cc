@@ -371,3 +371,123 @@ TEST_F(PsaSymmetricCipher, aes_chachapoly_aead)
             ciphertext.size()));
     EXPECT_EQ(plaintext, data);
 }
+
+TEST_F(PsaSymmetricCipher, aes_chachapoly_aead_no_ad)
+{
+    psa_status_t status;
+    psa_key_attributes_t sender_key_attr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_usage_flags(&sender_key_attr, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_EXPORT);
+    psa_set_key_algorithm(&sender_key_attr, PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305));
+    psa_set_key_type(&sender_key_attr, PSA_KEY_TYPE_CHACHA20);
+    psa_set_key_bits(&sender_key_attr, 256);
+
+    psa_key_handle_t sender_key;
+    status = psa_generate_key(&sender_key_attr, &sender_key);
+    ASSERT_EQ(status, PSA_SUCCESS);
+
+    vector<unsigned char> key(32);
+    size_t len;
+    status = psa_export_key(sender_key, key.data(), key.size(), &len);
+    ASSERT_EQ(status, PSA_SUCCESS);
+    EXPECT_EQ(len, 32);
+
+    psa_key_attributes_t receiver_key_attr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_usage_flags(&receiver_key_attr, PSA_KEY_USAGE_DECRYPT);
+    psa_set_key_algorithm(&receiver_key_attr, PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305));
+    psa_set_key_type(&receiver_key_attr, PSA_KEY_TYPE_CHACHA20);
+    psa_set_key_bits(&receiver_key_attr, 256);
+
+    psa_key_handle_t receiver_key;
+    psa_import_key(&receiver_key_attr, key.data(), key.size(), &receiver_key);
+
+    vector<unsigned char> data(1024);
+    iota(data.begin(), data.end(), 0);
+
+    vector<unsigned char> iv(PSA_AEAD_NONCE_LENGTH(PSA_KEY_TYPE_CHACHA20,
+        PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305)));
+    psa_generate_random(iv.data(), iv.size());
+    puthex(iv);
+    ASSERT_GT(iv.size(), 0);
+
+    vector<unsigned char> ciphertext(
+        PSA_AEAD_ENCRYPT_OUTPUT_SIZE(
+            PSA_KEY_TYPE_CHACHA20,
+            PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+            data.size())
+        );
+    ASSERT_GE(ciphertext.size(), data.size());
+
+    status = psa_aead_encrypt(
+        sender_key,
+        PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+        iv.data(),
+        iv.size(),
+        nullptr,
+        0,
+        data.data(),
+        data.size(),
+        ciphertext.data(),
+        ciphertext.size(),
+        &len);
+    ASSERT_EQ(status, PSA_SUCCESS);
+    EXPECT_EQ(len, PSA_AEAD_ENCRYPT_OUTPUT_SIZE(
+            PSA_KEY_TYPE_CHACHA20,
+            PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+            data.size()));
+
+    vector<unsigned char> tag(PSA_AEAD_TAG_LENGTH(PSA_KEY_TYPE_CHACHA20, 128, PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305)));
+    ASSERT_GT(tag.size(), 0);
+    copy(ciphertext.end() - tag.size(), ciphertext.end(), tag.begin());
+    puthex(tag);
+
+    vector<unsigned char> plaintext(
+        PSA_AEAD_DECRYPT_OUTPUT_SIZE(
+            PSA_KEY_TYPE_CHACHA20,
+            PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+            ciphertext.size())
+        );
+    ASSERT_GE(plaintext.size(), data.size());
+
+    status = psa_aead_decrypt(
+        receiver_key,
+        PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+        iv.data(),
+        iv.size(),
+        nullptr,
+        0,
+        ciphertext.data(),
+        ciphertext.size(),
+        plaintext.data(),
+        plaintext.size(),
+        &len);
+    ASSERT_EQ(status, PSA_SUCCESS);
+    EXPECT_EQ(len, PSA_AEAD_DECRYPT_OUTPUT_SIZE(
+            PSA_KEY_TYPE_CHACHA20,
+            PSA_ALG_AEAD_WITH_DEFAULT_LENGTH_TAG(PSA_ALG_CHACHA20_POLY1305),
+            ciphertext.size()));
+    EXPECT_EQ(plaintext, data);
+}
+
+TEST_F(PsaSymmetricCipher, chach20_deterministic)
+{
+    mbedtls_chacha20_context ctx;
+    mbedtls_chacha20_init(&ctx);
+
+    vector<uint8_t> key(32);
+    crypto_rng( key.data(), key.size() );
+    mbedtls_call(mbedtls_chacha20_setkey, &ctx, key.data());
+    vector<uint8_t> nonce(12);
+    std::iota(nonce.begin(), nonce.end(), 0);
+    mbedtls_call(mbedtls_chacha20_starts, &ctx, nonce.data(), 0);
+
+    vector<uint8_t> plaintext(1024);
+    iota(plaintext.begin(), plaintext.end(), 0);
+
+    vector<uint8_t> c1(plaintext.size()), c2(plaintext.size());
+    mbedtls_call(mbedtls_chacha20_update, &ctx, plaintext.size(), plaintext.data(), c1.data());
+
+    mbedtls_call(mbedtls_chacha20_starts, &ctx, nonce.data(), 0);
+    mbedtls_call(mbedtls_chacha20_update, &ctx, plaintext.size(), plaintext.data(), c2.data());
+
+    EXPECT_EQ(c1, c2);
+}
