@@ -29,7 +29,7 @@ void print_backtrace(void)
     free(strs);
 }
 
-void PANIC(const char* s, ...)
+void panic(const char* s, ...)
 {
     va_list args;
     va_start(args, s);

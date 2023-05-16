@@ -12,7 +12,8 @@ extern "C" {
 #endif
 
 #define PRIMITIVE_PANIC_DEFINED
-void PANIC(const char* s, ...);
+void panic(const char* s, ...);
+#define PANIC               panic
 
 #define PRIMITIVE_SETBUF_DEFINED
 #define crypto_setbuf       setbuf

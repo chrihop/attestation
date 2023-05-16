@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-void PANIC(const char* s, ...)
+void panic(const char* s, ...)
 {
     (void)s;
     while (1)

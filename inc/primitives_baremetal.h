@@ -13,7 +13,8 @@ extern "C" {
 #endif
 
 #define PRIMITIVE_PANIC_DEFINED
-void PANIC(const char* s, ...);
+void panic(const char* s, ...);
+#define PANIC              panic
 
 #define PRIMITIVE_SETBUF_DEFINED
 static inline void crypto_setbuf(FILE* stream, char* buf)
