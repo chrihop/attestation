@@ -6,7 +6,9 @@
 #elif defined(BAREMETAL)
 #include <primitives_baremetal.h>
 #elif defined(CERTIKOS_USER)
-#include <primitives_certikos.h>
+#include <primitives_certikos_user.h>
+#elif defined(CERTIKOS_KERNEL)
+#include <primitives_certikos_kernel.h>
 #elif defined(LINUX_KERNEL)
 #include <primitives_linux.h>
 #endif

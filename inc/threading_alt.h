@@ -6,7 +6,7 @@
 #elif defined(BAREMETAL)
 #include <threading_baremetal.h>
 #elif defined(CERTIKOS_USER)
-#include <threading_certikos.h>
+#include <threading_certikos_user.h>
 #elif defined(LINUX_KERNEL)
 #include <threading_linux_kernel.h>
 #endif
