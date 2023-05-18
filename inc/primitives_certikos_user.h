@@ -35,8 +35,7 @@ static inline int crypto_fprintf(FILE* stream, const char* format, ...)
 #define PRIMITIVE_VSNPRINTF_DEFINED
 static inline int crypto_vsnprintf(char* str, size_t size, const char* format, va_list ap)
 {
-    (void) size;
-    vsprintf(str, format, ap);
+    return vsnprintf(str, size, format, &ap);
 }
 
 #endif /* __PRIMITIVES_CERTIKOS_USER_H__ */
