@@ -7,6 +7,7 @@
 
 #include <debug.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #define PRIMITIVE_PANIC_DEFINED /* defined in <debug.h> */
 
