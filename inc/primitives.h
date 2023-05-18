@@ -100,8 +100,13 @@ enum secure_hash_status_t
 
 typedef enum secure_hash_status_t secure_hash_status_t;
 
+#ifndef __STR
 #define __STR(x) #x
+#endif
+
+#ifndef STR
 #define STR(x) __STR(x)
+#endif
 
 #if DEBUG_BUILD
 #define crypto_assert(x) \
