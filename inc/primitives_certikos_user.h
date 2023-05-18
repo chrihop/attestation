@@ -27,7 +27,7 @@ static inline int crypto_fprintf(FILE* stream, const char* format, ...)
     int rv;
     va_list ap;
     va_start(ap, format);
-    rv = vfprintf(stream, format, ap);
+    rv = vfprintf(stream, format, &ap);
     va_end(ap);
     return rv;
 }
