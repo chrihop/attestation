@@ -14,9 +14,6 @@ set (CMAKE_CXX_STANDARD 17)
 
 option (BACKEND "Backend crypto library to use" "mbedtls")
 option (BUILD_FOR "The target system to link with" "posix")
-set_property(CACHE BUILD_FOR PROPERTY STRINGS
-    "posix" "baremetal" "certikos_kernel" "certikos_user"
-    "linux_kernel")
 
 
 include(CheckCCompilerFlag)
