@@ -12,15 +12,12 @@ project(attestation)
 set (CMAKE_C_STANDARD 11)
 set (CMAKE_CXX_STANDARD 17)
 
-set (BUILD_FOR "posix" CACHE STRING "The target system to link with")
+option (BACKEND "Backend crypto library to use" "mbedtls")
+option (BUILD_FOR "The target system to link with" "posix")
 set_property(CACHE BUILD_FOR PROPERTY STRINGS
     "posix" "baremetal" "certikos_kernel" "certikos_user"
     "linux_kernel")
 
-set (BACKEND "mbedtls" CACHE STRING "Backend crypto library to use")
-set_property(CACHE BACKEND PROPERTY STRINGS "mbedtls"
-    # "openssl" "wolfssl"
-    )
 
 include(CheckCCompilerFlag)
 include(ProcessorCount)
