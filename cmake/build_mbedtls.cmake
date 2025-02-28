@@ -13,8 +13,7 @@ set (MBEDTLS_AS_SUBPROJECT true)
 list (APPEND CMAKE_MODULE_PATH
     ${ATTESTATION_TOP_DIR}/backend/mbedtls/cmake
 )
-set (CMAKE_CROSSCOMPILING ON)
-set (ENABLE_TESTING OFF)
+option (ENABLE_TESTING "" OFF)
 
 # Resolve conflicts with google benchmark
 find_program(SED
