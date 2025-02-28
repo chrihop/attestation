@@ -1,19 +1,17 @@
 cmake_minimum_required(VERSION 3.13)
-
-execute_process(
-    COMMAND uname -m
-    OUTPUT_VARIABLE HOST_ARCH
-)
-
-string (STRIP ${HOST_ARCH} HOST_ARCH)
-
 project(attestation)
 
 set (CMAKE_C_STANDARD 11)
 set (CMAKE_CXX_STANDARD 17)
 
-option (BACKEND "Backend crypto library to use" "mbedtls")
-option (BUILD_FOR "The target system to link with" "posix")
+
+if(NOT BACKEND)
+    set(BACKEND "mbedtls") #Backend crypto library to use
+endif()
+
+if(NOT BUILD_FOR)
+    set(BUILD_FOR "posix") #Target system to build for
+endif()
 
 
 include(CheckCCompilerFlag)
